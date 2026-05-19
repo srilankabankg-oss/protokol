@@ -1,7 +1,8 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import useMeetingStore from '../store/meetingStore';
 import AIPanel from '../components/ai/AIPanel';
+import DependencyChain from '../components/tasks/DependencyChain';
 
 function MeetingEditor() {
   const { id } = useParams<{ id: string }>();
@@ -50,6 +51,7 @@ function MeetingEditor() {
 
   const canEdit = meeting.status === 'preparation' || meeting.status === 'in_progress';
   const canApprove = meeting.status === 'on_approval';
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   return (
     <div className="flex flex-col h-screen">
@@ -113,6 +115,19 @@ function MeetingEditor() {
               </li>
             ))}
           </ol>
+
+          <h3 className="font-semibold text-sm text-gray-700 mt-6 mb-3">Задачи и связи</h3>
+          {selectedTaskId && (
+            <div className="mb-3">
+              <DependencyChain taskId={selectedTaskId} />
+              <button onClick={() => setSelectedTaskId(null)} className="text-xs text-blue-500 hover:underline mt-1">
+                Скрыть цепочку
+              </button>
+            </div>
+          )}
+          <div className="text-xs text-gray-400">
+            Нажмите на задачу для просмотра связей
+          </div>
         </aside>
 
         <main className="flex-1 flex flex-col min-w-0">
