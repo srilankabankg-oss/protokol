@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.adapters.api.routes import meetings, tasks, auth
+from src.adapters.api.routes import meetings, tasks, auth, ai
 from src.infrastructure.config import get_settings
 
 settings = get_settings()
@@ -25,6 +25,7 @@ app.add_middleware(
 app.include_router(meetings.router)
 app.include_router(tasks.router)
 app.include_router(auth.router)
+app.include_router(ai.router)
 
 
 @app.get("/api/health")

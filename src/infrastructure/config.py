@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     # LLM Gateway
     llm_gateway_url: str = "http://localhost:8001"
     llm_api_key: Optional[str] = None
+    llm_base_url: str = "https://api.stepfun.com/step_plan/v1"
+    llm_model: str = "step-router-v1"
+    llm_timeout: int = 180
 
     # App
     debug: bool = False
