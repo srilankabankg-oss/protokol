@@ -1,0 +1,61 @@
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "protokol"
+version = "0.1.0"
+description = "Intelligent Meeting Protocol Module for 'Book of Good Deeds' platform"
+authors = ["Sisyphus <dev@protokol.local>"]
+license = "Proprietary"
+readme = "README.md"
+package-mode = true
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.14"
+fastapi = { version = ">=0.115.0", extras = ["standard"] }
+uvicorn = { version = ">=0.34.0", extras = ["standard"] }
+sqlalchemy = { version = ">=2.0.36", extras = ["asyncio"] }
+asyncpg = ">=0.30.0"
+alembic = ">=1.14.0"
+pydantic = ">=2.10.0"
+pydantic-settings = ">=2.7.0"
+python-jose = { version = ">=3.3.0", extras = ["cryptography"] }
+passlib = { version = ">=1.7.4", extras = ["bcrypt"] }
+celery = { version = ">=5.4.0", extras = ["redis"] }
+redis = ">=5.2.0"
+httpx = ">=0.28.0"
+email-validator = ">=2.2.0"
+python-multipart = ">=0.0.17"
+
+[tool.poetry.group.dev.dependencies]
+pytest = ">=8.3.0"
+pytest-asyncio = ">=0.24.0"
+pytest-cov = ">=6.0.0"
+httpx = ">=0.28.0"
+black = ">=24.0"
+isort = ">=5.13.0"
+mypy = ">=1.13.0"
+ruff = ">=0.8.0"
+pre-commit = ">=4.0.0"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "C4"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["src"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+plugins = ["pydantic.mypy", "sqlalchemy.ext.mypy.plugin"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["src"]
