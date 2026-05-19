@@ -8,7 +8,6 @@ from sqlalchemy.orm import selectinload
 
 from src.adapters.db.models import Meeting, Participant, AgendaItem, Task, User
 from src.core.enums import MeetingLevel, MeetingStatus, ParticipantRole, WorkflowStage
-from src.infrastructure.celery_app import celery_app
 
 
 async def list_meetings(
@@ -150,18 +149,3 @@ async def approve_meeting(session: AsyncSession, meeting_id: UUID) -> Meeting:
     meeting.status = MeetingStatus.APPROVED
     await session.flush()
     return meeting
-
-
-@celery_app.task(name="export_pdf")
-def export_pdf(meeting_id_str: str) -> str:
-    return f"job-pdf-{meeting_id_str[:8]}"
-
-
-@celery_app.task(name="export_xlsx")
-def export_xlsx(meeting_id_str: str) -> str:
-    return f"job-xlsx-{meeting_id_str[:8]}"
-
-
-@celery_app.task(name="bulk_notification")
-def bulk_notification(meeting_id_str: str) -> str:
-    return f"bulk-notification-{meeting_id_str[:8]}"

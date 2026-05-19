@@ -16,7 +16,9 @@ from src.adapters.api.schemas.meeting import (
     ApproveResponse,
 )
 from src.adapters.services import meeting_service
+from src.adapters.services.export_service import generate_pdf, generate_xlsx
 from src.core.enums import MeetingLevel
+from src.infrastructure.celery_app import export_pdf_task, export_xlsx_task, send_notifications_task
 from src.infrastructure.database import get_async_session
 from src.infrastructure.dependencies import require_user, require_role
 
@@ -58,7 +60,7 @@ async def create_new_meeting(
         template_id=body.template_id, project_id=body.project_id,
         agenda_data=agenda_data,
     )
-    celery_task = meeting_service.bulk_notification.delay(str(meeting.id))
+    celery_task = send_notifications_task.delay(str(meeting.id), [])
     return MeetingCreateResponse(
         id=meeting.id, status=meeting.status.value,
         imported_legacy_tasks_count=imported_count, celery_task_id=celery_task.id,
@@ -124,11 +126,57 @@ async def approve(
 ):
     try:
         meeting = await meeting_service.approve_meeting(session, meeting_id)
-        pdf_job = meeting_service.export_pdf.delay(str(meeting.id))
-        xlsx_job = meeting_service.export_xlsx.delay(str(meeting.id))
+        pdf_job = export_pdf_task.delay(str(meeting.id))
+        xlsx_job = export_xlsx_task.delay(str(meeting.id))
         return ApproveResponse(
             id=meeting.id, status=meeting.status.value,
             transition_timestamp=meeting.updated_at,
             pdf_export_job_id=pdf_job.id, xlsx_export_job_id=xlsx_job.id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/{meeting_id}/export/pdf")
+async def download_pdf(
+    meeting_id: UUID,
+    session: AsyncSession = Depends(get_async_session),
+    _current_user=Depends(require_user),
+):
+    from fastapi.responses import FileResponse
+    from sqlalchemy import select as sa_select
+    from sqlalchemy.orm import selectinload as sa_selectinload
+
+    result = await session.execute(
+        sa_select(Meeting)
+        .options(sa_selectinload(Meeting.tasks).sa_selectinload(Task.raci_assignments))
+        .where(Meeting.id == meeting_id)
+    )
+    meeting = result.scalar_one_or_none()
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+
+    filepath = generate_pdf(meeting, list(meeting.tasks))
+    return FileResponse(filepath, filename=f"protocol_{meeting_id}.pdf",
+                        media_type="application/pdf")
+
+
+@router.get("/{meeting_id}/export/xlsx")
+async def download_xlsx(
+    meeting_id: UUID,
+    session: AsyncSession = Depends(get_async_session),
+    _current_user=Depends(require_user),
+):
+    from fastapi.responses import FileResponse
+
+    result = await session.execute(
+        sa_select(Meeting)
+        .options(sa_selectinload(Meeting.tasks).sa_selectinload(Task.raci_assignments))
+        .where(Meeting.id == meeting_id)
+    )
+    meeting = result.scalar_one_or_none()
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+
+    filepath = generate_xlsx(meeting, list(meeting.tasks))
+    return FileResponse(filepath, filename=f"protocol_{meeting_id}.xlsx",
+                        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")

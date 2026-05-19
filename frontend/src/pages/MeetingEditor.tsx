@@ -3,6 +3,8 @@ import { useParams } from 'react-router-dom';
 import useMeetingStore from '../store/meetingStore';
 import AIPanel from '../components/ai/AIPanel';
 import DependencyChain from '../components/tasks/DependencyChain';
+import ApprovalStepper from '../components/ui/ApprovalStepper';
+import ExportButtons from '../components/ui/ExportButtons';
 
 function MeetingEditor() {
   const { id } = useParams<{ id: string }>();
@@ -73,6 +75,7 @@ function MeetingEditor() {
           }`}>
             {STATUS_LABELS[meeting.status]}
           </span>
+          <ExportButtons meetingId={meeting.meeting_id} />
           <span className="text-xs text-gray-400">v{store.version}</span>
 
           {canEdit && (
@@ -87,6 +90,10 @@ function MeetingEditor() {
           )}
         </div>
       </header>
+
+      <div className="bg-white border-b px-4 py-2 shrink-0">
+        <ApprovalStepper currentStatus={meeting.status} />
+      </div>
 
       <div className="flex flex-1 overflow-hidden">
         <aside className="w-64 bg-white border-r p-4 overflow-y-auto shrink-0 hidden md:block">
