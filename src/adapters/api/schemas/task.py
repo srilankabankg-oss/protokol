@@ -31,7 +31,7 @@ class TaskCreate(BaseModel):
 class TaskResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
-    task_id: UUID = Field(alias="id")
+    task_id: UUID
     task_number: str
     description: str
     workflow_stage: WorkflowStage

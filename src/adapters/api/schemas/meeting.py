@@ -17,7 +17,7 @@ class AgendaItemCreate(BaseModel):
 class AgendaItemResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
-    agenda_id: UUID = Field(alias="id")
+    agenda_id: UUID
     title: str
     position: int
     is_completed: bool
@@ -48,7 +48,7 @@ class MeetingCreate(BaseModel):
 class MeetingCreateResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
-    meeting_id: UUID = Field(alias="id")
+    meeting_id: UUID
     status: MeetingStatus
     imported_legacy_tasks_count: int = 0
     celery_task_id: Optional[str] = None
@@ -57,7 +57,7 @@ class MeetingCreateResponse(BaseModel):
 class MeetingListItem(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
-    meeting_id: UUID = Field(alias="id")
+    meeting_id: UUID
     title: str
     level: str
     status: str
@@ -69,7 +69,7 @@ class MeetingListItem(BaseModel):
 class MeetingWorkspaceResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
-    meeting_id: UUID = Field(alias="id")
+    meeting_id: UUID
     breadcrumbs: list[str]
     status: MeetingStatus
     content_markdown: Optional[str] = None
@@ -90,7 +90,7 @@ class ContentUpdateResponse(BaseModel):
 class StatusTransitionResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
-    meeting_id: UUID = Field(alias="id")
+    meeting_id: UUID
     status: MeetingStatus
     transition_timestamp: datetime
 
