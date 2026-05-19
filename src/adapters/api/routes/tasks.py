@@ -1,42 +1,55 @@
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.adapters.api.schemas.task import (
-    TaskCreate, TaskResponse, EscalateRequest, EscalateResponse,
-    DependencyResponse, RaciUpdateRequest, RaciResponse, RaciValidationErrorResponse,
+    DependencyResponse,
+    EscalateRequest,
+    EscalateResponse,
+    RaciResponse,
+    RaciUpdateRequest,
+    RaciValidationErrorResponse,
+    TaskCreate,
+    TaskResponse,
 )
-from src.adapters import services as task_service_import
-from src.adapters.db.models import Task, RaciAssignment
-from src.core.enums import RaciRole, WorkflowStage
+from src.adapters.services import raci_service, task_service
+from src.adapters.db.models import Task
+from src.core.enums import RaciRole
 from src.infrastructure.database import get_async_session
-from src.infrastructure.dependencies import require_user, require_role
+from src.infrastructure.dependencies import require_role, require_user
 
 router = APIRouter(prefix="/api/v1/tasks", tags=["tasks"])
 
 
-import src.adapters.services.task_service as task_service
+def _task_to_response(t: Task) -> TaskResponse:
+    a_count = sum(1 for r in t.raci_assignments if r.role == RaciRole.A)
+    return TaskResponse(
+        task_id=t.id,
+        task_number=t.task_number,
+        description=t.description,
+        workflow_stage=t.workflow_stage.value,
+        raci_valid=(a_count == 1),
+        is_ai_processed=t.is_ai_processed,
+        planned_start=t.planned_start,
+        deadline=t.deadline,
+        created_at=t.created_at,
+    )
 
 
 @router.post("", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
-async def create_new_task(
+async def create_task(
     body: TaskCreate,
     session: AsyncSession = Depends(get_async_session),
     _current_user=Depends(require_role("secretary", "chairman", "admin")),
 ):
     task = await task_service.create_task(
-        session, meeting_id=body.meeting_id, description=body.description,
-        organization_ids=body.organization_links or [],
+        session,
+        meeting_id=body.meeting_id,
+        description=body.description,
+        organization_ids=body.organization_links if body.organization_links else None,
     )
-    a_count = sum(1 for r in task.raci_assignments if r.role == RaciRole.A)
-    return TaskResponse(
-        id=task.id, task_number=task.task_number, description=task.description,
-        workflow_stage=task.workflow_stage.value, raci_valid=(a_count == 1),
-        is_ai_processed=task.is_ai_processed, planned_start=task.planned_start,
-        deadline=task.deadline, created_at=task.created_at,
-    )
+    return _task_to_response(task)
 
 
 @router.get("/{task_id}/raci", response_model=RaciResponse)
@@ -45,76 +58,76 @@ async def get_raci(
     session: AsyncSession = Depends(get_async_session),
     _current_user=Depends(require_user),
 ):
-    result = await session.execute(
-        select(Task).where(Task.id == task_id)
-    )
-    task = result.scalar_one_or_none()
-    if not task:
+    svc = raci_service.RaciService(session)
+    try:
+        return await svc.get_assignments(task_id)
+    except ValueError:
         raise HTTPException(status_code=404, detail="Task not found")
-    assignments = []
-    for a in task.raci_assignments:
-        assignments.append(dict(user_id=a.user_id, role=a.role.value))
-    a_count = sum(1 for a in task.raci_assignments if a.role == RaciRole.A)
-    return RaciResponse(task_id=task.id, assignments=assignments,
-                        is_valid=(a_count == 1), errors=[])
 
 
 @router.put("/{task_id}/raci", response_model=RaciResponse)
 async def update_raci(
-    task_id: UUID, body: RaciUpdateRequest,
+    task_id: UUID,
+    body: RaciUpdateRequest,
     session: AsyncSession = Depends(get_async_session),
     _current_user=Depends(require_role("chairman", "admin")),
 ):
-    task = await session.get(Task, task_id)
-    if not task:
+    svc = raci_service.RaciService(session)
+
+    a_assignments = [a for a in body.assignments if a.role == "A"]
+    if len(a_assignments) > 1:
+        users = ", ".join(str(a.user_id)[:8] for a in a_assignments)
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "RACI_VALIDATION_FAILED",
+                "message": (
+                    f"Критическая ошибка: Обнаружено более одной роли "
+                    f"'Accountable (A)' на задачу. Нарушен UNIQUE CONSTRAINT. "
+                    f"Назначено {len(a_assignments)} пользователей: {users}."
+                ),
+                "is_valid": False,
+            },
+        )
+
+    if len(a_assignments) == 0:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "RACI_VALIDATION_FAILED",
+                "message": "Отсутствует роль 'Accountable (A)' на задачу.",
+                "is_valid": False,
+            },
+        )
+
+    assignments_data = [{"user_id": a.user_id, "role": a.role} for a in body.assignments]
+    try:
+        return await svc.update_assignments(
+            task_id,
+            assignments_data,
+            auto_correct=False,
+        )
+    except ValueError:
         raise HTTPException(status_code=404, detail="Task not found")
-
-    a_count = sum(1 for a in body.assignments if a.role == "A")
-    if a_count != 1:
-        msg = ("Критическая ошибка: Обнаружено более одной роли 'Accountable (A)' на задачу."
-               if a_count > 1 else "Отсутствует роль 'Accountable (A)'")
-        return RaciValidationErrorResponse(error="RACI_VALIDATION_FAILED",
-                                           message=msg, is_valid=False)
-
-    await session.execute(delete(RaciAssignment).where(RaciAssignment.task_id == task_id))
-    for a in body.assignments:
-        ra = RaciAssignment(id=uuid4(), task_id=task_id, user_id=a.user_id,
-                            role=RaciRole(a.role))
-        session.add(ra)
-    await session.flush()
-    return RaciResponse(
-        task_id=task_id,
-        assignments=[dict(user_id=a.user_id, role=a.role) for a in body.assignments],
-        is_valid=True, errors=[],
-    )
 
 
 @router.post("/{task_id}/escalate", response_model=EscalateResponse)
 async def escalate(
-    task_id: UUID, body: EscalateRequest,
+    task_id: UUID,
+    body: EscalateRequest,
     session: AsyncSession = Depends(get_async_session),
     _current_user=Depends(require_role("chairman", "admin")),
 ):
     try:
         source, dest = await task_service.escalate_task(
-            session, task_id=task_id,
-            target_meeting_type=body.target_meeting_type, reason=body.reason,
+            session,
+            task_id=task_id,
+            target_meeting_type=body.target_meeting_type,
+            reason=body.reason,
         )
         return EscalateResponse(
-            source_task=TaskResponse(id=source.id, task_number=source.task_number,
-                                     description=source.description,
-                                     workflow_stage=source.workflow_stage.value,
-                                     raci_valid=True, is_ai_processed=source.is_ai_processed,
-                                     planned_start=source.planned_start,
-                                     deadline=source.deadline, created_at=source.created_at),
-            destination_task=TaskResponse(
-                id=dest.id, task_number=dest.task_number,
-                description=dest.description,
-                workflow_stage=dest.workflow_stage.value,
-                raci_valid=True, is_ai_processed=dest.is_ai_processed,
-                planned_start=dest.planned_start, deadline=dest.deadline,
-                created_at=dest.created_at,
-            ),
+            source_task=_task_to_response(source),
+            destination_task=_task_to_response(dest),
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
