@@ -14,6 +14,7 @@ interface MeetingState {
   setContent: (markdown: string) => void;
   saveContent: () => Promise<void>;
   finalize: () => Promise<void>;
+  startWork: () => Promise<void>;
   approve: () => Promise<void>;
   reset: () => void;
 }
@@ -53,6 +54,13 @@ const useMeetingStore = create<MeetingState>((set, get) => ({
     } catch (e) {
       console.error('Autosave failed', e);
     }
+  },
+
+  startWork: async () => {
+    const { meeting } = get();
+    if (!meeting) return;
+    await api.startWorkMeeting(meeting.meeting_id);
+    await get().loadWorkspace(meeting.meeting_id);
   },
 
   finalize: async () => {

@@ -64,6 +64,11 @@ export const updateContent = async (id: string, content_markdown: string): Promi
   return data;
 };
 
+export const startWorkMeeting = async (id: string) => {
+  const { data } = await api.post(`/meetings/${id}/start-work`);
+  return data;
+};
+
 export const finalizeMeeting = async (id: string) => {
   const { data } = await api.post(`/meetings/${id}/finalize`);
   return data;

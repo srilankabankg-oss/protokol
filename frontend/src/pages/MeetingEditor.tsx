@@ -88,6 +88,12 @@ function MeetingEditor() {
           <ExportButtons meetingId={meeting.meeting_id} />
           <span className="text-xs text-gray-400">v{store.version}</span>
 
+          {meeting.status === 'preparation' && (
+            <button onClick={store.startWork} className="px-3 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">
+              Начать ведение
+            </button>
+          )}
+
           {canEdit && (
             <button onClick={store.finalize} className="px-3 py-1.5 bg-orange-500 text-white rounded text-sm hover:bg-orange-600">
               Завершить
