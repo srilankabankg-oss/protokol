@@ -1,4 +1,3 @@
-# Alembic script.py template for autogenerate
 """add_raci_accountable_constraint
 
 Revision ID: 656a3c5ba51a
@@ -11,7 +10,6 @@ from typing import Union
 
 from alembic import op
 import sqlalchemy as sa
-
 
 
 revision: str = '656a3c5ba51a'
@@ -38,14 +36,15 @@ def upgrade() -> None:
             RETURN NEW;
         END;
         $$ LANGUAGE plpgsql;
-
-        DROP TRIGGER IF EXISTS trg_raci_single_accountable ON raci_assignments;
+    """)
+    op.execute("DROP TRIGGER IF EXISTS trg_raci_single_accountable ON raci_assignments")
+    op.execute("""
         CREATE TRIGGER trg_raci_single_accountable
         BEFORE INSERT OR UPDATE ON raci_assignments
-        FOR EACH ROW EXECUTE FUNCTION check_raci_single_accountable();
+        FOR EACH ROW EXECUTE FUNCTION check_raci_single_accountable()
     """)
 
 
 def downgrade() -> None:
-    op.execute("DROP TRIGGER IF EXISTS trg_raci_single_accountable ON raci_assignments;")
-    op.execute("DROP FUNCTION IF EXISTS check_raci_single_accountable();")
+    op.execute("DROP TRIGGER IF EXISTS trg_raci_single_accountable ON raci_assignments")
+    op.execute("DROP FUNCTION IF EXISTS check_raci_single_accountable()")

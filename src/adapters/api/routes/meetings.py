@@ -1,9 +1,11 @@
-from datetime import datetime
 from uuid import UUID
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import FileResponse
+from sqlalchemy import select as sa_select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from src.adapters.api.schemas.meeting import (
     MeetingCreate,
@@ -15,6 +17,7 @@ from src.adapters.api.schemas.meeting import (
     StatusTransitionResponse,
     ApproveResponse,
 )
+from src.adapters.db.models import Meeting, Task
 from src.adapters.services import meeting_service
 from src.adapters.services.export_service import generate_pdf, generate_xlsx
 from src.core.enums import MeetingLevel
@@ -41,7 +44,7 @@ async def list_meetings(
     )
     return [
         MeetingListItem(
-            id=m.id, title=m.title, level=m.level.value, status=m.status.value,
+            meeting_id=m.id, title=m.title, level=m.level.value, status=m.status.value,
             notebook_path=None, date=m.date, updated_at=m.updated_at,
         )
         for m in meetings
@@ -62,7 +65,7 @@ async def create_new_meeting(
     )
     celery_task = send_notifications_task.delay(str(meeting.id), [])
     return MeetingCreateResponse(
-        id=meeting.id, status=meeting.status.value,
+        meeting_id=meeting.id, status=meeting.status.value,
         imported_legacy_tasks_count=imported_count, celery_task_id=celery_task.id,
     )
 
@@ -83,9 +86,10 @@ async def get_workspace(
                                   role=p.role_in_meeting.value, is_present=p.is_present))
     agenda = []
     for a in meeting.agenda_items:
-        agenda.append(dict(id=a.id, title=a.title, position=a.position, is_completed=a.is_completed))
+        agenda.append(dict(agenda_id=a.id, title=a.title, position=a.position, is_completed=a.is_completed))
     return MeetingWorkspaceResponse(
-        id=meeting.id, breadcrumbs=breadcrumbs, status=meeting.status.value,
+        meeting_id=meeting.id, title=meeting.title, breadcrumbs=breadcrumbs,
+        status=meeting.status.value,
         content_markdown=meeting.content_markdown,
         participants=participants, agenda=agenda,
     )
@@ -99,8 +103,22 @@ async def update_content(
 ):
     try:
         version, updated_at = await meeting_service.update_meeting_content(
-            session, meeting_id, body.content_markdown)
+            session, meeting_id, body.content_markdown, body.version)
         return ContentUpdateResponse(version=version, updated_at=updated_at)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/{meeting_id}/start-work", response_model=StatusTransitionResponse)
+async def start_work(
+    meeting_id: UUID, session: AsyncSession = Depends(get_async_session),
+    _current_user=Depends(require_role("secretary", "admin")),
+):
+    try:
+        meeting = await meeting_service.start_work(session, meeting_id)
+        return StatusTransitionResponse(
+            meeting_id=meeting.id, status=meeting.status.value,
+            transition_timestamp=meeting.updated_at)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -113,7 +131,7 @@ async def finalize(
     try:
         meeting = await meeting_service.finalize_meeting(session, meeting_id)
         return StatusTransitionResponse(
-            id=meeting.id, status=meeting.status.value,
+            meeting_id=meeting.id, status=meeting.status.value,
             transition_timestamp=meeting.updated_at)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -129,7 +147,7 @@ async def approve(
         pdf_job = export_pdf_task.delay(str(meeting.id))
         xlsx_job = export_xlsx_task.delay(str(meeting.id))
         return ApproveResponse(
-            id=meeting.id, status=meeting.status.value,
+            meeting_id=meeting.id, status=meeting.status.value,
             transition_timestamp=meeting.updated_at,
             pdf_export_job_id=pdf_job.id, xlsx_export_job_id=xlsx_job.id)
     except ValueError as e:
@@ -142,13 +160,9 @@ async def download_pdf(
     session: AsyncSession = Depends(get_async_session),
     _current_user=Depends(require_user),
 ):
-    from fastapi.responses import FileResponse
-    from sqlalchemy import select as sa_select
-    from sqlalchemy.orm import selectinload as sa_selectinload
-
     result = await session.execute(
         sa_select(Meeting)
-        .options(sa_selectinload(Meeting.tasks).sa_selectinload(Task.raci_assignments))
+        .options(selectinload(Meeting.tasks).selectinload(Task.raci_assignments))
         .where(Meeting.id == meeting_id)
     )
     meeting = result.scalar_one_or_none()
@@ -166,11 +180,9 @@ async def download_xlsx(
     session: AsyncSession = Depends(get_async_session),
     _current_user=Depends(require_user),
 ):
-    from fastapi.responses import FileResponse
-
     result = await session.execute(
         sa_select(Meeting)
-        .options(sa_selectinload(Meeting.tasks).sa_selectinload(Task.raci_assignments))
+        .options(selectinload(Meeting.tasks).selectinload(Task.raci_assignments))
         .where(Meeting.id == meeting_id)
     )
     meeting = result.scalar_one_or_none()

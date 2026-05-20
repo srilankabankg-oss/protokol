@@ -33,6 +33,7 @@ api.interceptors.response.use(
 export const login = async (email: string, password: string): Promise<TokenResponse> => {
   const { data } = await api.post('/auth/login', { email, password });
   localStorage.setItem('access_token', data.access_token);
+  localStorage.setItem('refresh_token', data.refresh_token);
   return data;
 };
 

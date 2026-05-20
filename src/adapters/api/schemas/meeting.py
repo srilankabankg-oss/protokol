@@ -79,6 +79,7 @@ class MeetingWorkspaceResponse(BaseModel):
 
 class ContentUpdateRequest(BaseModel):
     content_markdown: str
+    version: Optional[int] = None
 
 
 class ContentUpdateResponse(BaseModel):

@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 class UserBase(BaseModel):
     name: str = Field(max_length=255)
     email: EmailStr
-    role: Literal["admin", "secretary", "chairman", "user"] = "user"
+    role: Literal["user"] = "user"
 
 
 class UserCreate(UserBase):

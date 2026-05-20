@@ -9,7 +9,7 @@ services:
       POSTGRES_USER: protokol
       POSTGRES_PASSWORD: protokol_secret
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -22,7 +22,7 @@ services:
     image: redis:7-alpine
     container_name: protokol-redis
     ports:
-      - "6379:6379"
+      - "6380:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -41,11 +41,16 @@ services:
       DATABASE_URL: postgresql+asyncpg://protokol:protokol_secret@postgres:5432/protokol
       DATABASE_URL_SYNC: postgresql://protokol:protokol_secret@postgres:5432/protokol
       REDIS_URL: redis://redis:6379/0
-      SECRET_KEY: dev-secret-key-change-in-production
+      SECRET_KEY: fHiUPra0LHe424mmF825-g9yexkj5xEbSmWUENBdfpI
+      LLM_BASE_URL: https://api.stepfun.com/step_plan/v1
+      LLM_MODEL: step-router-v1
+      LLM_API_KEY: 6O6cHBwRXT53AuP2X776bD0PHSOYYeTrUXNZ4JSpKpmtRUd0owx4oJhg8hyiJdKCw
     ports:
       - "8000:8000"
     volumes:
       - ./src:/app/src
+      - ./frontend/dist:/app/frontend/dist
+      - ./.env:/app/.env
 
 volumes:
   postgres_data:

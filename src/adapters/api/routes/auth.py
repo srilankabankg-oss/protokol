@@ -8,9 +8,17 @@ from src.adapters.api.schemas.user import (
 from src.adapters.db.models import User
 from src.core.enums import UserRole
 from src.infrastructure.auth import (
-    create_access_token, create_refresh_token, hash_password, verify_password,
+    create_access_token, create_refresh_token, decode_token,
+    hash_password, verify_password,
 )
 from src.infrastructure.database import get_async_session
+from src.infrastructure.dependencies import require_user
+from pydantic import BaseModel
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -42,3 +50,32 @@ async def login(body: LoginRequest, session: AsyncSession = Depends(get_async_se
         access_token=create_access_token(payload),
         refresh_token=create_refresh_token(payload),
     )
+
+
+@router.post("/refresh", response_model=TokenResponse)
+async def refresh(body: RefreshRequest, session: AsyncSession = Depends(get_async_session)):
+    payload = decode_token(body.refresh_token)
+    if not payload or payload.get("type") != "refresh":
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+    user_id = payload.get("sub")
+    result = await session.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user or not user.is_active:
+        raise HTTPException(status_code=401, detail="User not found or inactive")
+    new_payload = {"sub": str(user.id), "email": user.email, "role": user.role.value}
+    return TokenResponse(
+        access_token=create_access_token(new_payload),
+        refresh_token=create_refresh_token(new_payload),
+    )
+
+
+@router.get("/me", response_model=UserResponse)
+async def me(
+    session: AsyncSession = Depends(get_async_session),
+    current_user=Depends(require_user),
+):
+    result = await session.execute(select(User).where(User.id == current_user.id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user

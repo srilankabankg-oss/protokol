@@ -1,3 +1,5 @@
+import json
+import re
 from typing import Any, Optional
 
 import httpx
@@ -51,25 +53,33 @@ class LLMGateway:
         return environ.get("STEPFUN_API_KEY", "") or settings.llm_api_key or ""
 
     def _base_url(self) -> str:
-        return settings.llm_gateway_url or "https://api.stepfun.com/step_plan/v1"
+        return settings.llm_base_url or "https://api.stepfun.com/step_plan/v1"
 
     async def chat_completion(
         self,
         messages: list[dict],
         model: str = "step-router-v1",
-        temperature: float = 0.3,
+        temperature: float = 0.0,
         max_tokens: int = 4096,
+        response_format: Optional[dict] = None,
+        tools: Optional[list[dict]] = None,
+        tool_choice: Optional[dict] = None,
     ) -> dict:
         headers = {
             "Authorization": f"Bearer {self._api_key()}",
             "Content-Type": "application/json",
         }
-        payload = {
+        payload: dict[str, Any] = {
             "model": model,
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
         }
+        if response_format:
+            payload["response_format"] = response_format
+        if tools:
+            payload["tools"] = tools
+            payload["tool_choice"] = tool_choice or "auto"
 
         response = await self.client.post(
             f"{self._base_url()}/chat/completions",
@@ -80,6 +90,20 @@ class LLMGateway:
             raise LLMGatewayError(f"LLM error {response.status_code}: {response.text[:200]}")
         return response.json()
 
+    def _build_tool_from_schema(self, schema: dict) -> list[dict]:
+        return [{
+            "type": "function",
+            "function": {
+                "name": "output_structured_data",
+                "description": "Output the extracted data in the required JSON structure",
+                "parameters": {
+                    "type": "object",
+                    "properties": schema.get("properties", {}),
+                    "required": schema.get("required", []),
+                },
+            },
+        }]
+
     async def structured_output(
         self,
         system_prompt: dict,
@@ -87,15 +111,33 @@ class LLMGateway:
         schema: dict,
         max_retries: int = 2,
     ) -> dict:
-        messages = [system_prompt, {"role": "user", "content": user_message}]
+        messages: list[dict] = [
+            system_prompt,
+            {"role": "user", "content": user_message},
+        ]
 
-        import json
+        tools = self._build_tool_from_schema(schema)
+
         for attempt in range(max_retries + 1):
             try:
-                result = await self.chat_completion(messages, temperature=0.0 if attempt > 0 else 0.3)
-                content = result["choices"][0]["message"]["content"]
+                result = await self.chat_completion(
+                    messages,
+                    temperature=0.0,
+                    tools=tools,
+                    tool_choice="required",
+                )
+                choice = result["choices"][0]
+                message = choice["message"]
 
-                parsed = self._extract_json(content)
+                # Prefer tool_calls — guarantees schema adherence
+                if message.get("tool_calls"):
+                    args_str = message["tool_calls"][0]["function"]["arguments"]
+                    parsed = json.loads(args_str)
+                elif message.get("content"):
+                    parsed = self._extract_json(message["content"])
+                else:
+                    raise ValueError("Empty response from LLM")
+
                 self._validate_schema(parsed, schema)
                 return parsed
 
@@ -106,7 +148,8 @@ class LLMGateway:
                         f"Исправь ответ и верни СТРОГО валидный JSON, соответствующий схеме. "
                         f"Без markdown-обёрток, без лишнего текста."
                     )
-                    messages.append({"role": "assistant", "content": content if 'content' in dir() else ""})
+                    prev_content = message.get("content", "") if "message" in dir() else ""
+                    messages.append({"role": "assistant", "content": prev_content})
                     messages.append({"role": "user", "content": correction_prompt})
                 else:
                     raise LLMGatewayError(f"Failed after {max_retries + 1} attempts: {e}")
@@ -114,9 +157,6 @@ class LLMGateway:
         raise LLMGatewayError("Max retries exceeded")
 
     def _extract_json(self, raw: str) -> dict:
-        import json
-        import re
-
         raw = raw.strip()
 
         if raw.startswith("```json"):
@@ -127,9 +167,13 @@ class LLMGateway:
             raw = raw[:-3]
         raw = raw.strip()
 
-        match = re.search(r"\{.*\}", raw, re.DOTALL)
+        match = re.search(r"\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}", raw, re.DOTALL)
         if match:
-            return json.loads(match.group(0))
+            try:
+                return json.loads(match.group(0))
+            except json.JSONDecodeError:
+                pass
+
         return json.loads(raw)
 
     def _validate_schema(self, data: dict, schema: dict) -> None:

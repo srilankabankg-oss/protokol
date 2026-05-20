@@ -11,9 +11,12 @@ from src.infrastructure.llm_gateway import LLMGateway, SYSTEM_PROMPTS
 
 MEETING_SUMMARY_SCHEMA = {
     "type": "object",
-    "required": ["content_markdown", "identified_speakers", "detected_risks"],
     "properties": {
         "content_markdown": {
+            "type": "string",
+            "description": "Markdown текст с блоками ## СЛУШАЛИ, ## ВЫСТУПИЛИ, ## ПОСТАНОВИЛИ",
+        },
+        "summary": {
             "type": "string",
             "description": "Markdown текст с блоками ## СЛУШАЛИ, ## ВЫСТУПИЛИ, ## ПОСТАНОВИЛИ",
         },
@@ -38,9 +41,31 @@ MEETING_SUMMARY_SCHEMA = {
 
 TASK_EXTRACTION_SCHEMA = {
     "type": "object",
-    "required": ["extracted_tasks"],
     "properties": {
         "extracted_tasks": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["description", "raci_assignments", "confidence_score", "raci_valid"],
+                "properties": {
+                    "description": {"type": "string"},
+                    "raci_assignments": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "required": ["name", "role"],
+                            "properties": {
+                                "name": {"type": "string"},
+                                "role": {"type": "string", "enum": ["R", "A", "C", "I"]},
+                            },
+                        },
+                    },
+                    "confidence_score": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                    "raci_valid": {"type": "boolean"},
+                },
+            },
+        },
+        "tasks": {
             "type": "array",
             "items": {
                 "type": "object",
@@ -102,7 +127,7 @@ class AIService:
             )
 
             update_data = {
-                "content_markdown": summary.get("content_markdown", meeting.content_markdown),
+                "content_markdown": summary.get("content_markdown") or summary.get("summary", meeting.content_markdown),
                 "identified_speakers": summary.get("identified_speakers", []),
                 "detected_risks": summary.get("detected_risks", []),
             }
@@ -118,17 +143,31 @@ class AIService:
             )
 
             suggested_items = []
-            for t in tasks.get("extracted_tasks", []):
+            extracted = tasks.get("extracted_tasks") or tasks.get("tasks")
+            if extracted is None and isinstance(tasks, dict):
+                # Model returned a flat task object instead of wrapped array
+                if any(k for k in tasks if k not in ("confidence_score", "raci_valid", "json_schema_matched")):
+                    extracted = [tasks]
+            for t in (extracted or []):
+                desc = t.get("description") or t.get("task_description") or t.get("task_name") or str(t)
                 suggested_items.append({
                     "temporary_id": f"tmp-ai-{uuid4().hex[:8]}",
-                    "extracted_description": t.get("description", ""),
+                    "extracted_description": desc,
                     "confidence_score": t.get("confidence_score", 0.7),
                     "json_schema_matched": t.get("raci_valid", False),
                 })
 
             return {
                 "suggested_action_items": suggested_items,
-                "detected_risks": update_data["detected_risks"],
+                "detected_risks": [
+                    {
+                        "risk_id": r.get("risk_id", f"risk-{uuid4().hex[:8]}"),
+                        "severity": r.get("severity", "MEDIUM"),
+                        "text_anchor": r.get("text_anchor", r.get("message", "")),
+                        "message": r.get("message", ""),
+                    }
+                    for r in update_data.get("detected_risks", [])
+                ],
             }
 
         except Exception:

@@ -1,44 +1,44 @@
 """Core domain enumerations for the Meeting Protocol module."""
 
-from enum import Enum
+from enum import StrEnum
 
 
-class UserRole(str, Enum):
+class UserRole(StrEnum):
     ADMIN = "admin"
     SECRETARY = "secretary"
     CHAIRMAN = "chairman"
     USER = "user"
 
 
-class MeetingLevel(str, Enum):
+class MeetingLevel(StrEnum):
     STRATEGIC = "strategic"
     COORDINATION = "coordination"
     OPERATIONAL = "operational"
     SITUATIONAL = "situational"
 
 
-class MeetingStatus(str, Enum):
+class MeetingStatus(StrEnum):
     PREPARATION = "preparation"
     IN_PROGRESS = "in_progress"
     ON_APPROVAL = "on_approval"
     APPROVED = "approved"
 
 
-class WorkflowStage(str, Enum):
+class WorkflowStage(StrEnum):
     TO_DO = "to_do"
     IN_PROGRESS = "in_progress"
     ESCALATED = "escalated"
     COMPLETED = "completed"
 
 
-class RaciRole(str, Enum):
+class RaciRole(StrEnum):
     R = "R"
     A = "A"
     C = "C"
     I = "I"
 
 
-class ParticipantRole(str, Enum):
+class ParticipantRole(StrEnum):
     CHAIRMAN = "chairman"
     SECRETARY = "secretary"
     PARTICIPANT = "participant"

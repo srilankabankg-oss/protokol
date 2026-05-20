@@ -37,7 +37,11 @@ async def get_ai_insights(
     try:
         insights = await ai.generate_insights(meeting_id)
         return AIInsightsResponse(**insights)
-    except ValueError:
-        raise HTTPException(status_code=404, detail="Meeting not found")
+    except ValueError as e:
+        if "Meeting not found" in str(e):
+            raise HTTPException(status_code=404, detail="Meeting not found")
+        raise HTTPException(status_code=502, detail=f"AI service error: {e}")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"AI service error: {e}")
     finally:
         await ai.close()

@@ -1,6 +1,6 @@
 from datetime import datetime, UTC
 from uuid import UUID, uuid4
-from typing import Optional
+from typing import Optional, Optional
 
 from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -112,19 +112,35 @@ async def _import_legacy_tasks(
 
 
 async def update_meeting_content(
-    session: AsyncSession, meeting_id: UUID, content_markdown: str
+    session: AsyncSession, meeting_id: UUID, content_markdown: str, expected_version: Optional[int] = None
 ) -> tuple[int, datetime]:
     meeting = await session.get(Meeting, meeting_id)
     if meeting is None:
         raise ValueError("Meeting not found")
     if meeting.status == MeetingStatus.APPROVED:
         raise ValueError("Approved meetings cannot be modified")
+    if expected_version is not None and meeting.version != expected_version:
+        raise ValueError(f"Version conflict: expected {expected_version}, current {meeting.version}")
 
     meeting.content_markdown = content_markdown
     meeting.version += 1
     meeting.updated_at = datetime.now(UTC)
     await session.flush()
     return meeting.version, meeting.updated_at
+
+
+async def start_work(session: AsyncSession, meeting_id: UUID) -> Meeting:
+    meeting = await session.get(Meeting, meeting_id)
+    if meeting is None:
+        raise ValueError("Meeting not found")
+    if meeting.status != MeetingStatus.PREPARATION:
+        raise ValueError(f"Cannot start work in status: {meeting.status.value}")
+
+    meeting.status = MeetingStatus.IN_PROGRESS
+    meeting.updated_at = datetime.now(UTC)
+    await session.flush()
+    await session.refresh(meeting)
+    return meeting
 
 
 async def finalize_meeting(session: AsyncSession, meeting_id: UUID) -> Meeting:
@@ -135,7 +151,9 @@ async def finalize_meeting(session: AsyncSession, meeting_id: UUID) -> Meeting:
         raise ValueError(f"Cannot finalize meeting in status: {meeting.status.value}")
 
     meeting.status = MeetingStatus.ON_APPROVAL
+    meeting.updated_at = datetime.now(UTC)
     await session.flush()
+    await session.refresh(meeting)
     return meeting
 
 
@@ -147,5 +165,7 @@ async def approve_meeting(session: AsyncSession, meeting_id: UUID) -> Meeting:
         raise ValueError(f"Cannot approve meeting in status: {meeting.status.value}")
 
     meeting.status = MeetingStatus.APPROVED
+    meeting.updated_at = datetime.now(UTC)
     await session.flush()
+    await session.refresh(meeting)
     return meeting

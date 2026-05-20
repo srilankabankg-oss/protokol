@@ -4,6 +4,7 @@ from src.adapters.services.meeting_service import (
     finalize_meeting,
     get_meeting_workspace,
     list_meetings,
+    start_work,
     update_meeting_content,
 )
 from src.adapters.services.raci_service import RaciService
@@ -18,6 +19,7 @@ __all__ = [
     "create_meeting",
     "get_meeting_workspace",
     "list_meetings",
+    "start_work",
     "update_meeting_content",
     "finalize_meeting",
     "approve_meeting",

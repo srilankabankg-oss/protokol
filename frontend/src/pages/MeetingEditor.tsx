@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import useMeetingStore from '../store/meetingStore';
+import useAuthStore from '../store/authStore';
 import AIPanel from '../components/ai/AIPanel';
 import DependencyChain from '../components/tasks/DependencyChain';
 import ApprovalStepper from '../components/ui/ApprovalStepper';
@@ -8,7 +9,9 @@ import ExportButtons from '../components/ui/ExportButtons';
 
 function MeetingEditor() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const store = useMeetingStore();
+  const auth = useAuthStore();
   const saveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -24,6 +27,8 @@ function MeetingEditor() {
     saveTimerRef.current = setInterval(autosave, 3000);
     return () => { if (saveTimerRef.current) clearInterval(saveTimerRef.current); };
   }, [autosave]);
+
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   if (store.isLoading) {
     return (
@@ -53,7 +58,6 @@ function MeetingEditor() {
 
   const canEdit = meeting.status === 'preparation' || meeting.status === 'in_progress';
   const canApprove = meeting.status === 'on_approval';
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   return (
     <div className="flex flex-col h-screen">
@@ -67,6 +71,12 @@ function MeetingEditor() {
           ))}
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => { auth.logout(); navigate('/login'); }}
+            className="text-xs text-gray-400 hover:text-red-500 px-2 py-1 rounded hover:bg-red-50"
+          >
+            Выйти
+          </button>
           <span className={`px-2 py-1 rounded text-xs font-medium ${
             meeting.status === 'preparation' ? 'bg-gray-100 text-gray-600' :
             meeting.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :

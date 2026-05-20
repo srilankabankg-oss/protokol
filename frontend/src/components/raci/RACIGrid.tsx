@@ -20,7 +20,7 @@ function RACIGrid({ taskId, onClose }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [editMode, setEditMode] = useState(false);
-  const [editingAssignments, setEditingAssignments] = useState<{ user_id: string; role: RaciRoleType }[]>([]);
+  const [editingAssignments, setEditingAssignments] = useState<{ user_id: string; role: RaciRoleType; name?: string }[]>([]);
 
   useEffect(() => { fetchRaci(); }, [taskId]);
 
@@ -29,7 +29,7 @@ function RACIGrid({ taskId, onClose }: Props) {
     try {
       const data = await getRaci(taskId);
       setRaci(data);
-      setEditingAssignments(data.assignments.map(a => ({ user_id: a.user_id, role: a.role as RaciRoleType })));
+      setEditingAssignments(data.assignments.map(a => ({ user_id: a.user_id, role: a.role as RaciRoleType, name: a.name })));
       setError(null);
     } catch {
       setError('Ошибка загрузки RACI');
