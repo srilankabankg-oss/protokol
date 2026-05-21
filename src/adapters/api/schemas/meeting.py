@@ -1,12 +1,19 @@
 from datetime import datetime
 from typing import Optional, Literal
 from uuid import UUID
+import re
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 MeetingLevel = Literal["strategic", "coordination", "operational", "situational"]
 MeetingStatus = Literal["preparation", "in_progress", "on_approval", "approved"]
+
+_SUSPICIOUS_PATTERN = re.compile(
+    r"<script|<iframe|<img|javascript:|onerror=|onload=|"
+    r"DROP\s+TABLE|DELETE\s+FROM|INSERT\s+INTO|UNION\s+SELECT",
+    re.IGNORECASE,
+)
 
 
 class AgendaItemCreate(BaseModel):
@@ -38,11 +45,18 @@ class ParticipantResponse(BaseModel):
 
 
 class MeetingCreate(BaseModel):
-    title: str = Field(max_length=500)
+    title: str = Field(min_length=1, max_length=500)
     template_id: Optional[UUID] = None
     project_id: Optional[UUID] = None
     level: MeetingLevel = "operational"
     agenda_items: list[AgendaItemCreate] = []
+
+    @field_validator("title")
+    @classmethod
+    def reject_suspicious_input(cls, v: str) -> str:
+        if _SUSPICIOUS_PATTERN.search(v):
+            raise ValueError("Title contains invalid characters or patterns")
+        return v
 
 
 class MeetingCreateResponse(BaseModel):
@@ -79,7 +93,6 @@ class MeetingWorkspaceResponse(BaseModel):
 
 class ContentUpdateRequest(BaseModel):
     content_markdown: str
-    version: Optional[int] = None
 
 
 class ContentUpdateResponse(BaseModel):
