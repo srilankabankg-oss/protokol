@@ -1,17 +1,15 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import useMeetingStore from '../store/meetingStore';
-import useAuthStore from '../store/authStore';
 import AIPanel from '../components/ai/AIPanel';
 import DependencyChain from '../components/tasks/DependencyChain';
 import ApprovalStepper from '../components/ui/ApprovalStepper';
 import ExportButtons from '../components/ui/ExportButtons';
+import NavBar from '../components/ui/NavBar';
 
 function MeetingEditor() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const store = useMeetingStore();
-  const auth = useAuthStore();
   const saveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -27,8 +25,8 @@ function MeetingEditor() {
     saveTimerRef.current = setInterval(autosave, 3000);
     return () => { if (saveTimerRef.current) clearInterval(saveTimerRef.current); };
   }, [autosave]);
-
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   if (store.isLoading) {
     return (
@@ -59,8 +57,11 @@ function MeetingEditor() {
   const canEdit = meeting.status === 'preparation' || meeting.status === 'in_progress';
   const canApprove = meeting.status === 'on_approval';
 
+
   return (
-    <div className="flex flex-col h-screen">
+    <>
+      <NavBar />
+      <div className="flex flex-col h-screen">
       <header className="bg-white border-b px-4 py-3 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3 text-sm text-gray-500">
           {meeting.breadcrumbs.map((crumb, i) => (
@@ -71,12 +72,6 @@ function MeetingEditor() {
           ))}
         </div>
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => { auth.logout(); navigate('/login'); }}
-            className="text-xs text-gray-400 hover:text-red-500 px-2 py-1 rounded hover:bg-red-50"
-          >
-            Выйти
-          </button>
           <span className={`px-2 py-1 rounded text-xs font-medium ${
             meeting.status === 'preparation' ? 'bg-gray-100 text-gray-600' :
             meeting.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
@@ -87,12 +82,6 @@ function MeetingEditor() {
           </span>
           <ExportButtons meetingId={meeting.meeting_id} />
           <span className="text-xs text-gray-400">v{store.version}</span>
-
-          {meeting.status === 'preparation' && (
-            <button onClick={store.startWork} className="px-3 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">
-              Начать ведение
-            </button>
-          )}
 
           {canEdit && (
             <button onClick={store.finalize} className="px-3 py-1.5 bg-orange-500 text-white rounded text-sm hover:bg-orange-600">
@@ -172,6 +161,7 @@ function MeetingEditor() {
         <AIPanel meetingId={meeting.meeting_id} />
       </div>
     </div>
+    </>
   );
 }
 

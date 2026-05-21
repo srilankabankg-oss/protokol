@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getOrganizations, createOrganization, getPeople, createPerson, getContracts, createContract, getUsers } from "../api/client";
 import type { Organization, Person, Contract, User } from "../types";
+import NavBar from "../components/ui/NavBar";
 
 const TABS = ["Организации", "Люди", "Договоры", "Пользователи"];
 
@@ -37,7 +38,9 @@ function Admin() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
+    <>
+      <NavBar />
+      <div className="max-w-6xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold text-gray-900 mb-1">Админ-панель</h1>
       <p className="text-gray-500 mb-6">Управление организациями, людьми, договорами и пользователями</p>
       <div className="flex gap-2 mb-6">
@@ -86,6 +89,7 @@ function Admin() {
         {tab === 3 && users.map(u => <div key={u.id} className="bg-white rounded-lg border p-3 text-sm flex justify-between"><span>{u.name} ({u.email})</span><span className="text-gray-400">{u.role}</span></div>)}
       </div>
     </div>
+    </>
   );
 }
 export default Admin;

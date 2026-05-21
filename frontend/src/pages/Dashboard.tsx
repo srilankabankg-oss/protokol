@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { getMeetings, createMeeting } from '../api/client';
-import useAuthStore from '../store/authStore';
+import { getMeetings } from '../api/client';
 import type { MeetingListItem } from '../types';
+import NavBar from '../components/ui/NavBar';
 
 const LEVEL_LABELS: Record<string, string> = {
   strategic: 'Стратегический',
@@ -39,68 +39,33 @@ function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [levelFilter, setLevelFilter] = useState('');
-  const [showCreate, setShowCreate] = useState(false);
-  const [newTitle, setNewTitle] = useState('');
-  const [newLevel, setNewLevel] = useState('operational');
-const [creating, setCreating] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
   const navigate = useNavigate();
-  const auth = useAuthStore();
 
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      setLoading(true);
-      setError(null);
-      try {
-        const params: Record<string, string> = {};
-        if (levelFilter) params.level = levelFilter;
-        const data = await getMeetings(params);
-        if (!cancelled) setMeetings(data);
-      } catch (e: any) {
-        if (!cancelled) setError('Ошибка загрузки');
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-    load();
-    return () => { cancelled = true; };
-  }, [levelFilter, refreshKey]);
-
-  async function handleCreate() {
-    if (!newTitle.trim()) return;
-    setCreating(true);
+  async function fetchMeetings() {
+    setLoading(true);
+    setError(null);
     try {
-      await createMeeting({
-        title: newTitle.trim(),
-        level: newLevel as MeetingListItem['level'],
-        agenda_items: [],
-      });
-      setShowCreate(false);
-      setNewTitle('');
-      setRefreshKey(k => k + 1);
-    } catch {
-      setError('Ошибка создания совещания');
+      const params: Record<string, string> = {};
+      if (levelFilter) params.level = levelFilter;
+      const data = await getMeetings(params);
+      setMeetings(data);
+    } catch (e: any) {
+      setError('Ошибка загрузки');
     } finally {
-      setCreating(false);
+      setLoading(false);
     }
   }
 
-  return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Центр управления совещаниями</h1>
-        <p className="text-gray-500 mt-1">Книга добрых дел</p>
-      </div>
+  useEffect(() => { fetchMeetings(); }, [levelFilter]);
 
-      <div className="flex justify-end mb-4">
-        <button
-          onClick={() => { auth.logout(); navigate('/login'); }}
-          className="px-3 py-1.5 text-sm text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-        >
-          Выйти
-        </button>
-      </div>
+  return (
+    <>
+      <NavBar />
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Центр управления совещаниями</h1>
+          <p className="text-gray-500 mt-1">Книга добрых дел</p>
+        </div>
 
       <div className="flex flex-wrap gap-3 mb-6 items-center">
         <select
@@ -115,7 +80,7 @@ const [creating, setCreating] = useState(false);
         </select>
 
         <button
-          onClick={() => setShowCreate(true)}
+          onClick={() => navigate('/login')}
           className="ml-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
         >
           + Создать совещание
@@ -125,46 +90,7 @@ const [creating, setCreating] = useState(false);
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4 mb-4">
           {error}
-          <button onClick={() => setRefreshKey(k => k + 1)} className="ml-4 underline">Повторить</button>
-        </div>
-      )}
-
-      {showCreate && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-lg">
-            <h2 className="text-lg font-semibold mb-4">Новое совещание</h2>
-            <input
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              placeholder="Название совещания"
-              className="w-full border rounded-lg px-3 py-2 text-sm mb-3"
-              autoFocus
-            />
-            <select
-              value={newLevel}
-              onChange={(e) => setNewLevel(e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 text-sm mb-4"
-            >
-              {Object.entries(LEVEL_LABELS).map(([k, v]) => (
-                <option key={k} value={k}>{v}</option>
-              ))}
-            </select>
-            <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => setShowCreate(false)}
-                className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
-              >
-                Отмена
-              </button>
-              <button
-                onClick={handleCreate}
-                disabled={creating || !newTitle.trim()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm disabled:opacity-50"
-              >
-                {creating ? 'Создание...' : 'Создать'}
-              </button>
-            </div>
-          </div>
+          <button onClick={fetchMeetings} className="ml-4 underline">Повторить</button>
         </div>
       )}
 
@@ -204,6 +130,7 @@ const [creating, setCreating] = useState(false);
         ))}
       </div>
     </div>
+    </>
   );
 }
 
