@@ -77,6 +77,15 @@ async def create_meeting(
             session.add(agenda)
 
     imported_count = await _import_legacy_tasks(session, meeting.id, project_id)
+    try:
+        from src.adapters.services.protocol_parser import parse_notes_to_protocol
+        import asyncio
+        protocol = await parse_notes_to_protocol(content_markdown)
+        if any(protocol.values()):
+            meeting.protocol_data = protocol
+    except Exception:
+        pass
+
     await session.flush()
 
     return meeting, imported_count
@@ -125,6 +134,15 @@ async def update_meeting_content(
     meeting.content_markdown = content_markdown
     meeting.version += 1
     meeting.updated_at = datetime.now(UTC)
+    try:
+        from src.adapters.services.protocol_parser import parse_notes_to_protocol
+        import asyncio
+        protocol = await parse_notes_to_protocol(content_markdown)
+        if any(protocol.values()):
+            meeting.protocol_data = protocol
+    except Exception:
+        pass
+
     await session.flush()
     return meeting.version, meeting.updated_at
 
@@ -138,6 +156,15 @@ async def start_work(session: AsyncSession, meeting_id: UUID) -> Meeting:
 
     meeting.status = MeetingStatus.IN_PROGRESS
     meeting.updated_at = datetime.now(UTC)
+    try:
+        from src.adapters.services.protocol_parser import parse_notes_to_protocol
+        import asyncio
+        protocol = await parse_notes_to_protocol(content_markdown)
+        if any(protocol.values()):
+            meeting.protocol_data = protocol
+    except Exception:
+        pass
+
     await session.flush()
     await session.refresh(meeting)
     return meeting
@@ -152,6 +179,15 @@ async def finalize_meeting(session: AsyncSession, meeting_id: UUID) -> Meeting:
 
     meeting.status = MeetingStatus.ON_APPROVAL
     meeting.updated_at = datetime.now(UTC)
+    try:
+        from src.adapters.services.protocol_parser import parse_notes_to_protocol
+        import asyncio
+        protocol = await parse_notes_to_protocol(content_markdown)
+        if any(protocol.values()):
+            meeting.protocol_data = protocol
+    except Exception:
+        pass
+
     await session.flush()
     await session.refresh(meeting)
     return meeting
@@ -166,6 +202,15 @@ async def approve_meeting(session: AsyncSession, meeting_id: UUID) -> Meeting:
 
     meeting.status = MeetingStatus.APPROVED
     meeting.updated_at = datetime.now(UTC)
+    try:
+        from src.adapters.services.protocol_parser import parse_notes_to_protocol
+        import asyncio
+        protocol = await parse_notes_to_protocol(content_markdown)
+        if any(protocol.values()):
+            meeting.protocol_data = protocol
+    except Exception:
+        pass
+
     await session.flush()
     await session.refresh(meeting)
     return meeting
