@@ -1,11 +1,12 @@
 from uuid import UUID, uuid4
 from typing import Optional
 
-from sqlalchemy import String, Boolean, ForeignKey
+from sqlalchemy import String, Boolean, ForeignKey, Text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.adapters.db.models.base import Base, TimestampMixin
+
 
 
 class Organization(Base, TimestampMixin):
@@ -17,5 +18,8 @@ class Organization(Base, TimestampMixin):
         PGUUID(as_uuid=True), ForeignKey("organizations.id"), nullable=True
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    inn: Mapped[str | None] = mapped_column(String(12), unique=True, nullable=True)
+    profile: Mapped[str | None] = mapped_column(Text, nullable=True)
+    role: Mapped[str | None] = mapped_column(String(50), nullable=True, default=None)
 
     parent = relationship("Organization", remote_side=[id], backref="children")

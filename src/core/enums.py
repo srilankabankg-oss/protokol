@@ -38,6 +38,15 @@ class RaciRole(StrEnum):
     I = "I"
 
 
+
+
+
+class OrgRole(StrEnum):
+    CLIENT = "client"
+    GENERAL_CONTRACTOR = "general_contractor"
+    SUBCONTRACTOR = "subcontractor"
+    SUPPLIER = "supplier"
+
 class ParticipantRole(StrEnum):
     CHAIRMAN = "chairman"
     SECRETARY = "secretary"

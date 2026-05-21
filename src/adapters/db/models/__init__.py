@@ -2,6 +2,8 @@ from src.adapters.db.models.base import Base, TimestampMixin
 from src.adapters.db.models.user import User
 from src.adapters.db.models.organization import Organization
 from src.adapters.db.models.meeting import Meeting
+from src.adapters.db.models.person import Person
+from src.adapters.db.models.contract import Contract
 from src.adapters.db.models.participant import Participant
 from src.adapters.db.models.agenda import AgendaItem
 from src.adapters.db.models.task import Task
