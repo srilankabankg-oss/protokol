@@ -9,6 +9,9 @@ import type {
   TaskResponse,
   TokenResponse,
   User,
+  Organization,
+  Person,
+  Contract,
 } from '../types';
 
 const api = axios.create({ baseURL: '/api/v1' });
@@ -33,7 +36,6 @@ api.interceptors.response.use(
 export const login = async (email: string, password: string): Promise<TokenResponse> => {
   const { data } = await api.post('/auth/login', { email, password });
   localStorage.setItem('access_token', data.access_token);
-  localStorage.setItem('refresh_token', data.refresh_token);
   return data;
 };
 
@@ -106,5 +108,42 @@ export const getDependencies = async (taskId: string) => {
 
 export const getAIInsights = async (meetingId: string): Promise<AIInsights> => {
   const { data } = await api.get(`/meetings/${meetingId}/ai-insights`);
+  return data;
+};
+
+// ── Admin API ──
+
+export const getOrganizations = async (): Promise<Organization[]> => {
+  const { data } = await api.get('/admin/organizations');
+  return data;
+};
+
+export const createOrganization = async (payload: Partial<Organization>): Promise<Organization> => {
+  const { data } = await api.post('/admin/organizations', payload);
+  return data;
+};
+
+export const getPeople = async (): Promise<Person[]> => {
+  const { data } = await api.get('/admin/people');
+  return data;
+};
+
+export const createPerson = async (payload: Partial<Person>): Promise<Person> => {
+  const { data } = await api.post('/admin/people', payload);
+  return data;
+};
+
+export const getContracts = async (): Promise<Contract[]> => {
+  const { data } = await api.get('/admin/contracts');
+  return data;
+};
+
+export const createContract = async (payload: Partial<Contract>): Promise<Contract> => {
+  const { data } = await api.post('/admin/contracts', payload);
+  return data;
+};
+
+export const getUsers = async (): Promise<User[]> => {
+  const { data } = await api.get('/admin/users');
   return data;
 };

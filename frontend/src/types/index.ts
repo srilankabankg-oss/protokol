@@ -38,7 +38,6 @@ export interface Participant {
 
 export interface MeetingWorkspace {
   meeting_id: string;
-  title: string;
   breadcrumbs: string[];
   status: MeetingStatus;
   content_markdown?: string;
@@ -112,4 +111,30 @@ export interface TokenResponse {
   access_token: string;
   refresh_token: string;
   token_type: 'bearer';
+}
+
+export interface Organization {
+  id: string;
+  name: string;
+  inn?: string;
+  profile?: string;
+  role?: string;
+  parent_id?: string;
+  is_active: boolean;
+}
+
+export interface Person {
+  id: string;
+  full_name: string;
+  job_title?: string;
+  org_id?: string;
+}
+
+export interface Contract {
+  id: string;
+  subject: string;
+  end_date?: string;
+  client_org_id: string;
+  contractor_org_id: string;
+  meeting_id?: string;
 }
