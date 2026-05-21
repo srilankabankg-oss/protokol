@@ -84,6 +84,7 @@ class MeetingWorkspaceResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     meeting_id: UUID
+    title: str
     breadcrumbs: list[str]
     status: MeetingStatus
     content_markdown: Optional[str] = None
