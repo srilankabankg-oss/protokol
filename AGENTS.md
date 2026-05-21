@@ -93,3 +93,10 @@ Never put business logic in routes. Never put HTTP in services.
 ## RULE 10: Documentation Language
 
 All documentation in `docs/` is in **English**. `README.md` overview is in **Russian** with an English AI section.
+## RULE 11: Post-Task QA Mandate
+
+**MANDATORY after every task completion:**
+1. Write PyTests covering new/modified functionality
+2. Add tester scenarios in the designated test file
+3. Update the project changelog (`docs/CHANGELOG.md`)
+4. Run the test suite and verify all tests pass
