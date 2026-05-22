@@ -13,9 +13,9 @@ interface MeetingState {
   loadWorkspace: (id: string) => Promise<void>;
   setContent: (markdown: string) => void;
   saveContent: () => Promise<void>;
-  finalize: () => Promise<void>;
   startWork: () => Promise<void>;
   triggerAI: () => Promise<void>;
+  finalize: () => Promise<void>;
   approve: () => Promise<void>;
   reset: () => void;
 }
@@ -63,3 +63,36 @@ const useMeetingStore = create<MeetingState>((set, get) => ({
     await api.startWorkMeeting(meeting.meeting_id);
     await get().loadWorkspace(meeting.meeting_id);
   },
+
+  triggerAI: async () => {
+    const { meeting, contentMarkdown } = get();
+    if (!meeting) return;
+    try {
+      await api.updateContent(meeting.meeting_id, contentMarkdown);
+      set({ isDirty: false });
+    } catch (e) {
+      console.error('AI failed', e);
+    }
+  },
+
+  finalize: async () => {
+    const { meeting } = get();
+    if (!meeting) return;
+    await api.finalizeMeeting(meeting.meeting_id);
+    await get().loadWorkspace(meeting.meeting_id);
+  },
+
+  approve: async () => {
+    const { meeting } = get();
+    if (!meeting) return;
+    await api.approveMeeting(meeting.meeting_id);
+    await get().loadWorkspace(meeting.meeting_id);
+  },
+
+  reset: () => set({
+    meeting: null, contentMarkdown: '', isDirty: false,
+    error: null, isLoading: false, version: 1,
+  }),
+}));
+
+export default useMeetingStore;

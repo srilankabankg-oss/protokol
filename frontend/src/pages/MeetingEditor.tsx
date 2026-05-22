@@ -5,8 +5,8 @@ import AIPanel from '../components/ai/AIPanel';
 import DependencyChain from '../components/tasks/DependencyChain';
 import ApprovalStepper from '../components/ui/ApprovalStepper';
 import ExportButtons from '../components/ui/ExportButtons';
-import TabularProtocol from "../components/protocol/TabularProtocol";
 import NavBar from '../components/ui/NavBar';
+import TabularProtocol, { type ProtocolTask } from '../components/protocol/TabularProtocol';
 
 function MeetingEditor() {
   const { id } = useParams<{ id: string }>();
@@ -58,11 +58,12 @@ function MeetingEditor() {
   const canEdit = meeting.status !== 'approved';
   const canApprove = meeting.status === 'on_approval';
   const canGoBack = meeting.status === 'on_approval';
+  const [protocolTasks, setProtocolTasks] = useState<ProtocolTask[]>([]);
+  const participants = meeting.participants.map(p => p.name).filter(Boolean);
 
   async function handleAIProcess() {
-    store.setContent(store.contentMarkdown + '\n\n---\n[Обработка ИИ...]');
     await store.saveContent();
-    await store.loadWorkspace(meeting.meeting_id);
+    await store.triggerAI();
   }
 
   async function handleGoBack() {
@@ -134,8 +135,6 @@ function MeetingEditor() {
       <div className="flex flex-1 overflow-hidden">
         <aside className="w-64 bg-white border-r p-4 overflow-y-auto shrink-0 hidden md:block">
           <h3 className="font-semibold text-sm text-gray-700 mb-3">Участники</h3>
-          <button className="mb-3 px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">+ Добавить участника</button>
-          <button className="mb-3 px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">+ Добавить участника</button>
           <ul className="space-y-2 mb-6">
             {meeting.participants.map(p => (
               <li key={p.user_id} className="flex items-center gap-2 text-sm">
@@ -176,16 +175,23 @@ function MeetingEditor() {
         </aside>
 
         <main className="flex-1 flex flex-col min-w-0">
-          <div className="flex-1 p-4">
+          <div className="flex-1 p-4 overflow-auto">
             <textarea
               value={store.contentMarkdown}
               onChange={(e) => store.setContent(e.target.value)}
               disabled={!canEdit}
               placeholder="Начните вводить текст протокола...\n\n## СЛУШАЛИ\n\n## ВЫСТУПИЛИ\n\n## ПОСТАНОВИЛИ"
-              className="w-full h-48 resize-y mb-4 font-mono text-sm p-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:bg-gray-50 disabled:text-gray-500"
+              className="w-full h-48 resize-y font-mono text-sm p-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:bg-gray-50 disabled:text-gray-500 mb-4"
             />
-            <h3 className="text-sm font-semibold text-gray-700 mb-2">📋 Протокол (табличная форма)</h3>
-            <TabularProtocol tasks={[]} onTasksChange={() => {}} readOnly={true} meetingId={meeting.meeting_id} />
+            <div className="mb-2">
+              <h3 className="text-sm font-semibold text-gray-700 mb-2">📋 Протокол (табличная форма)</h3>
+              <TabularProtocol
+                data={{ tasks: protocolTasks }}
+                onChange={setProtocolTasks}
+                readOnly={!canEdit}
+                participants={participants}
+              />
+            </div>
           </div>
           <div className="bg-gray-50 border-t px-4 py-1.5 flex items-center justify-between text-xs text-gray-400 shrink-0">
             <span>{store.isDirty ? '● Не сохранено' : '✓ Сохранено'}</span>

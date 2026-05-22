@@ -133,3 +133,4 @@ function TabularProtocol({ meetingId, tasks, onTasksChange, readOnly }: Props) {
 }
 
 export default TabularProtocol;
+export type { ProtocolTask };
