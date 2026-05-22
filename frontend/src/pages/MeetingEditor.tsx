@@ -5,6 +5,7 @@ import AIPanel from '../components/ai/AIPanel';
 import DependencyChain from '../components/tasks/DependencyChain';
 import ApprovalStepper from '../components/ui/ApprovalStepper';
 import ExportButtons from '../components/ui/ExportButtons';
+import TabularProtocol from "../components/protocol/TabularProtocol";
 import NavBar from '../components/ui/NavBar';
 
 function MeetingEditor() {
@@ -22,7 +23,7 @@ function MeetingEditor() {
   }, [store.isDirty]);
 
   useEffect(() => {
-    saveTimerRef.current = setInterval(autosave, 3000);
+    saveTimerRef.current = setInterval(autosave, 10000);
     return () => { if (saveTimerRef.current) clearInterval(saveTimerRef.current); };
   }, [autosave]);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
@@ -179,8 +180,10 @@ function MeetingEditor() {
               onChange={(e) => store.setContent(e.target.value)}
               disabled={!canEdit}
               placeholder="Начните вводить текст протокола...\n\n## СЛУШАЛИ\n\n## ВЫСТУПИЛИ\n\n## ПОСТАНОВИЛИ"
-              className="w-full h-full resize-none font-mono text-sm p-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:bg-gray-50 disabled:text-gray-500"
+              className="w-full h-48 resize-y mb-4 font-mono text-sm p-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:bg-gray-50 disabled:text-gray-500"
             />
+            <h3 className="text-sm font-semibold text-gray-700 mb-2">📋 Протокол (табличная форма)</h3>
+            <TabularProtocol tasks={[]} onTasksChange={() => {}} readOnly={true} meetingId={meeting.meeting_id} />
           </div>
           <div className="bg-gray-50 border-t px-4 py-1.5 flex items-center justify-between text-xs text-gray-400 shrink-0">
             <span>{store.isDirty ? '● Не сохранено' : '✓ Сохранено'}</span>

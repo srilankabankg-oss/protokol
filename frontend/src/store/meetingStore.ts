@@ -15,6 +15,7 @@ interface MeetingState {
   saveContent: () => Promise<void>;
   finalize: () => Promise<void>;
   startWork: () => Promise<void>;
+  triggerAI: () => Promise<void>;
   approve: () => Promise<void>;
   reset: () => void;
 }
