@@ -63,6 +63,15 @@ const useMeetingStore = create<MeetingState>((set, get) => ({
     await api.startWorkMeeting(meeting.meeting_id);
     await get().loadWorkspace(meeting.meeting_id);
   },
+  triggerAI: async () => {
+    if (!get().meeting) return;
+    try {
+      const api = await import("../api/client");
+      await api.default.updateContent(get().meeting.meeting_id, get().contentMarkdown);
+      const ws = await api.default.getWorkspace(get().meeting.meeting_id);
+      set({ meeting: ws, isDirty: false });
+    } catch (e) { console.error("AI failed", e); }
+  },
 
   finalize: async () => {
     const { meeting } = get();
