@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { getMeetings } from '../api/client';
+import { getMeetings, createMeeting } from '../api/client';
 import type { MeetingListItem } from '../types';
 import NavBar from '../components/ui/NavBar';
 
@@ -39,6 +39,10 @@ function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [levelFilter, setLevelFilter] = useState('');
+  const [showCreate, setShowCreate] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newLevel, setNewLevel] = useState('operational');
+  const [createErr, setCreateErr] = useState('');
   const navigate = useNavigate();
 
   async function fetchMeetings() {
@@ -57,6 +61,16 @@ function Dashboard() {
   }
 
   useEffect(() => { fetchMeetings(); }, [levelFilter]);
+
+  async function handleCreate() {
+    if (!newTitle.trim()) return;
+    setCreateErr('');
+    try {
+      await createMeeting({ title: newTitle.trim(), level: newLevel as any, agenda_items: [] });
+      setShowCreate(false); setNewTitle(''); setNewLevel('operational');
+      await fetchMeetings();
+    } catch { setCreateErr('Ошибка создания'); }
+  }
 
   return (
     <>
@@ -80,7 +94,14 @@ function Dashboard() {
         </select>
 
         <button
-          onClick={() => navigate('/login')}
+          onClick={() => navigate('/admin')}
+          className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm font-medium"
+        >
+          Админка
+        </button>
+
+        <button
+          onClick={() => setShowCreate(true)}
           className="ml-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
         >
           + Создать совещание
@@ -130,6 +151,28 @@ function Dashboard() {
         ))}
       </div>
     </div>
+
+      {showCreate && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={e => e.target === e.currentTarget && setShowCreate(false)}>
+          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-lg">
+            <h2 className="text-lg font-semibold mb-4">Новое совещание</h2>
+            <input placeholder="Название совещания" value={newTitle} onChange={e => setNewTitle(e.target.value)}
+              className="w-full border rounded-lg px-3 py-2 mb-3 text-sm" autoFocus />
+            <select value={newLevel} onChange={e => setNewLevel(e.target.value)}
+              className="w-full border rounded-lg px-3 py-2 mb-4 text-sm">
+              <option value="strategic">Стратегический</option>
+              <option value="coordination">Координационный</option>
+              <option value="operational">Оперативный</option>
+              <option value="situational">Проблемный</option>
+            </select>
+            {createErr && <div className="text-red-500 text-sm mb-3">{createErr}</div>}
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setShowCreate(false)} className="px-4 py-2 border rounded-lg text-sm">Отмена</button>
+              <button onClick={handleCreate} disabled={!newTitle.trim()} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm disabled:opacity-50">Создать</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

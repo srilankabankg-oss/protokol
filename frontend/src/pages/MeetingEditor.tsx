@@ -54,8 +54,22 @@ function MeetingEditor() {
     on_approval: 'На согласовании', approved: 'Утверждено',
   };
 
-  const canEdit = meeting.status === 'preparation' || meeting.status === 'in_progress';
+  const canEdit = meeting.status !== 'approved';
   const canApprove = meeting.status === 'on_approval';
+  const canGoBack = meeting.status === 'on_approval';
+
+  async function handleAIProcess() {
+    store.setContent(store.contentMarkdown + '\n\n---\n[Обработка ИИ...]');
+    await store.saveContent();
+    await store.loadWorkspace(meeting.meeting_id);
+  }
+
+  async function handleGoBack() {
+    if (meeting.status === 'on_approval') {
+      // Rollback: reload workspace to get fresh state
+      await store.loadWorkspace(meeting.meeting_id);
+    }
+  }
 
 
   return (
@@ -84,6 +98,22 @@ function MeetingEditor() {
           <span className="text-xs text-gray-400">v{store.version}</span>
 
           {canEdit && (
+            <button onClick={handleAIProcess} className="px-3 py-1.5 bg-purple-600 text-white rounded text-sm hover:bg-purple-700">
+              🤖 Обработать ИИ
+            </button>
+          )}
+          {canGoBack && (
+            <button onClick={handleGoBack} className="px-3 py-1.5 bg-gray-400 text-white rounded text-sm hover:bg-gray-500">
+              ← Назад
+            </button>
+          )}
+
+          {meeting.status === 'preparation' && (
+            <button onClick={store.startWork} className="px-3 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">
+              Начать ведение
+            </button>
+          )}
+          {meeting.status === 'in_progress' && (
             <button onClick={store.finalize} className="px-3 py-1.5 bg-orange-500 text-white rounded text-sm hover:bg-orange-600">
               Завершить
             </button>
