@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
-interface ProtocolTask {
+export interface ProtocolTask {
   id: string;
   number: number;
   code: string;
@@ -9,7 +9,6 @@ interface ProtocolTask {
   controller: string;
   deadline: string;
   notes: string;
-  parent_id: string | null;
   subtasks: ProtocolTask[];
 }
 
@@ -18,119 +17,91 @@ interface Props {
   tasks: ProtocolTask[];
   onTasksChange: (tasks: ProtocolTask[]) => void;
   readOnly: boolean;
+  participants: string[];
 }
 
-function TabularProtocol({ meetingId, tasks, onTasksChange, readOnly }: Props) {
-  const [editingCell, setEditingCell] = useState<{taskId: string; field: string} | null>(null);
-  const [editValue, setEditValue] = useState('');
+function makeTask(num: number): ProtocolTask {
+  return {
+    id: crypto.randomUUID(), number: num,
+    code: `TSK-${String(num).padStart(3, '0')}`,
+    description: '', responsible: '', controller: '',
+    deadline: '', notes: '', subtasks: [],
+  };
+}
 
-  function generateCode(index: number): string {
-    return `TSK-${String(index + 1).padStart(3, '0')}`;
+function TabularProtocol({ meetingId, tasks, onTasksChange, readOnly, participants }: Props) {
+  function addTask() { onTasksChange([...tasks, makeTask(tasks.length + 1)]); }
+
+  function setField(taskId: string, field: keyof ProtocolTask, value: string) {
+    onTasksChange(tasks.map(t => t.id === taskId ? { ...t, [field]: value } : t));
   }
 
-  function addTask(parentId: string | null = null) {
-    const newTask: ProtocolTask = {
-      id: crypto.randomUUID(),
-      number: tasks.length + 1,
-      code: generateCode(tasks.length),
-      description: '',
-      responsible: '',
-      controller: '',
-      deadline: '',
-      notes: '',
-      parent_id: parentId,
-      subtasks: [],
-    };
-    onTasksChange([...tasks, newTask]);
+  function renderRow(t: ProtocolTask, i: number) {
+    return (
+      <tr key={t.id} className="border-b hover:bg-gray-50">
+        <td className="border px-2 py-1 text-xs text-center w-8">{i + 1}</td>
+        <td className="border px-2 py-1 text-xs font-mono w-16">{t.code}</td>
+        <td className="border px-1 py-1">
+          {readOnly ? <span className="text-xs">{t.description}</span> :
+            <input value={t.description} onChange={e => setField(t.id, 'description', e.target.value)}
+              className="w-full text-xs border-0 bg-transparent focus:outline-none" placeholder="Описание..." />}
+        </td>
+        <td className="border px-1 py-1 w-36">
+          {!readOnly && participants.length > 0 ? (
+            <select value={t.responsible} onChange={e => setField(t.id, 'responsible', e.target.value)} className="w-full text-xs border-0 bg-transparent">
+              <option value="">—</option>
+              {participants.map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
+          ) : <span className="text-xs px-1">{t.responsible || '—'}</span>}
+        </td>
+        <td className="border px-1 py-1 w-36">
+          {!readOnly && participants.length > 0 ? (
+            <select value={t.controller} onChange={e => setField(t.id, 'controller', e.target.value)} className="w-full text-xs border-0 bg-transparent">
+              <option value="">—</option>
+              {participants.map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
+          ) : <span className="text-xs px-1">{t.controller || '—'}</span>}
+        </td>
+        <td className="border px-1 py-1 w-28">
+          {readOnly ? <span className="text-xs">{t.deadline}</span> :
+            <input type="date" value={t.deadline} onChange={e => setField(t.id, 'deadline', e.target.value)} className="w-full text-xs border-0 bg-transparent" />}
+        </td>
+        <td className="border px-1 py-1">
+          {readOnly ? <span className="text-xs">{t.notes}</span> :
+            <input value={t.notes} onChange={e => setField(t.id, 'notes', e.target.value)} className="w-full text-xs border-0 bg-transparent focus:outline-none" placeholder="..." />}
+        </td>
+      </tr>
+    );
   }
-
-  function updateTask(taskId: string, field: string, value: string) {
-    const updated = tasks.map(t => t.id === taskId ? { ...t, [field]: value } : t);
-    onTasksChange(updated);
-    setEditingCell(null);
-  }
-
-  function startEdit(taskId: string, field: string, currentValue: string) {
-    if (readOnly) return;
-    setEditingCell({ taskId, field });
-    setEditValue(currentValue);
-  }
-
-  function deleteTask(taskId: string) {
-    onTasksChange(tasks.filter(t => t.id !== taskId));
-  }
-
-  const cols = [
-    { key: 'number', label: '№', width: 'w-10' },
-    { key: 'code', label: 'Код', width: 'w-20' },
-    { key: 'description', label: 'Описание задачи', width: 'min-w-[200px]' },
-    { key: 'responsible', label: 'Ответственный', width: 'w-32' },
-    { key: 'controller', label: 'Контролирующий', width: 'w-32' },
-    { key: 'deadline', label: 'Дата завершения', width: 'w-28' },
-    { key: 'notes', label: 'Примечания', width: 'w-32' },
-    { key: 'actions', label: '', width: 'w-24' },
-  ];
-
-  const editableFields = ['description', 'responsible', 'controller', 'deadline', 'notes'];
 
   return (
-    <div className="overflow-x-auto border rounded-lg">
-      <table className="w-full text-sm">
-        <thead className="bg-gray-50 border-b">
-          <tr>
-            {cols.map(c => (
-              <th key={c.key} className={`px-2 py-2 text-left text-xs font-medium text-gray-500 ${c.width}`}>{c.label}</th>
-            ))}
+    <div className="overflow-x-auto border rounded-lg mt-2">
+      <table className="w-full border-collapse">
+        <thead>
+          <tr className="bg-gray-100 text-xs font-medium text-gray-600">
+            <th className="border px-2 py-2 w-8">№</th>
+            <th className="border px-2 py-2 w-16">Код</th>
+            <th className="border px-2 py-2">Описание задачи</th>
+            <th className="border px-2 py-2 w-36">Ответственный</th>
+            <th className="border px-2 py-2 w-36">Контролирующий</th>
+            <th className="border px-2 py-2 w-28">Дата завершения</th>
+            <th className="border px-2 py-2">Примечания</th>
           </tr>
         </thead>
         <tbody>
-          {tasks.map((task, i) => (
-            <tr key={task.id} className="border-b hover:bg-gray-50">
-              <td className="px-2 py-2 text-gray-400 text-xs">{i + 1}</td>
-              <td className="px-2 py-2 font-mono text-xs text-gray-500">{task.code}</td>
-              {editableFields.map(field => (
-                <td key={field} className="px-2 py-1">
-                  {editingCell?.taskId === task.id && editingCell?.field === field ? (
-                    <input
-                      autoFocus
-                      value={editValue}
-                      onChange={e => setEditValue(e.target.value)}
-                      onBlur={() => updateTask(task.id, field, editValue)}
-                      onKeyDown={e => { if (e.key === 'Enter') updateTask(task.id, field, editValue); if (e.key === 'Escape') setEditingCell(null); }}
-                      className="w-full border rounded px-1 py-0.5 text-xs"
-                    />
-                  ) : (
-                    <div
-                      onClick={() => startEdit(task.id, field, (task as any)[field])}
-                      className={`text-xs px-1 py-0.5 min-h-[20px] rounded ${readOnly ? 'cursor-default' : 'cursor-pointer hover:bg-blue-50'} ${!task[field as keyof ProtocolTask] ? 'text-gray-300 italic' : 'text-gray-700'}`}
-                    >
-                      {(task as any)[field] || '—'}
-                    </div>
-                  )}
-                </td>
-              ))}
-              <td className="px-2 py-2">
-                {!readOnly && (
-                  <div className="flex gap-1">
-                    <button onClick={() => addTask(task.id)} title="Подзадача" className="text-xs text-blue-500 hover:text-blue-700">↳</button>
-                    <button onClick={() => deleteTask(task.id)} className="text-xs text-red-400 hover:text-red-600">×</button>
-                  </div>
-                )}
-              </td>
-            </tr>
-          ))}
+          {tasks.length === 0 && (
+            <tr><td colSpan={7} className="text-center text-xs text-gray-400 py-4">Нет задач. Нажмите "Добавить задачу" или "Обработать ИИ"</td></tr>
+          )}
+          {tasks.map((t, i) => renderRow(t, i))}
         </tbody>
       </table>
       {!readOnly && (
-        <div className="p-2 border-t">
-          <button onClick={() => addTask()} className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">
-            + Добавить задачу
-          </button>
-        </div>
+        <button onClick={addTask} className="w-full py-2 text-blue-600 hover:bg-blue-50 text-sm border-t">
+          + Добавить задачу
+        </button>
       )}
     </div>
   );
 }
 
 export default TabularProtocol;
-export type { ProtocolTask };

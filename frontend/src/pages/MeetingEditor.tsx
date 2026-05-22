@@ -183,15 +183,12 @@ function MeetingEditor() {
               placeholder="Начните вводить текст протокола...\n\n## СЛУШАЛИ\n\n## ВЫСТУПИЛИ\n\n## ПОСТАНОВИЛИ"
               className="w-full h-48 resize-y font-mono text-sm p-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:bg-gray-50 disabled:text-gray-500 mb-4"
             />
-            <div className="mb-2">
               <h3 className="text-sm font-semibold text-gray-700 mb-2">📋 Протокол (табличная форма)</h3>
-              <TabularProtocol
-                data={{ tasks: protocolTasks }}
-                onChange={setProtocolTasks}
-                readOnly={!canEdit}
+                tasks={protocolTasks}
+                onTasksChange={setProtocolTasks}
+                readOnly={!canEdit} meetingId={meeting.meeting_id}
                 participants={participants}
               />
-            </div>
           </div>
           <div className="bg-gray-50 border-t px-4 py-1.5 flex items-center justify-between text-xs text-gray-400 shrink-0">
             <span>{store.isDirty ? '● Не сохранено' : '✓ Сохранено'}</span>
