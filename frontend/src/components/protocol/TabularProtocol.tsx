@@ -18,6 +18,7 @@ interface Props {
   onTasksChange: (tasks: ProtocolTask[]) => void;
   readOnly: boolean;
   participants: string[];
+  participants: string[];
 }
 
 function makeTask(num: number): ProtocolTask {
