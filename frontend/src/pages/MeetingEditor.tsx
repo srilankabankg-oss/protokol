@@ -134,6 +134,8 @@ function MeetingEditor() {
       <div className="flex flex-1 overflow-hidden">
         <aside className="w-64 bg-white border-r p-4 overflow-y-auto shrink-0 hidden md:block">
           <h3 className="font-semibold text-sm text-gray-700 mb-3">Участники</h3>
+          <button className="mb-3 px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">+ Добавить участника</button>
+          <button className="mb-3 px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">+ Добавить участника</button>
           <ul className="space-y-2 mb-6">
             {meeting.participants.map(p => (
               <li key={p.user_id} className="flex items-center gap-2 text-sm">
