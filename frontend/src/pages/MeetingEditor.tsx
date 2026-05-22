@@ -29,6 +29,7 @@ function MeetingEditor() {
   }, [autosave]);
 
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [protocolTasks, setProtocolTasks] = useState<ProtocolTask[]>([]);
 
   if (store.isLoading) {
     return (
@@ -54,7 +55,6 @@ function MeetingEditor() {
 
   const canEdit = meeting.status !== 'approved';
   const canApprove = meeting.status === 'on_approval';
-  const [protocolTasks, setProtocolTasks] = useState<ProtocolTask[]>([]);
   const participants = meeting.participants.map(p => p.name).filter(Boolean);
 
   async function handleAIProcess() {
