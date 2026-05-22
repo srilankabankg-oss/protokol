@@ -103,7 +103,7 @@ async def update_content(
 ):
     try:
         version, updated_at = await meeting_service.update_meeting_content(
-            session, meeting_id, body.content_markdown, body.version)
+            session, meeting_id, body.content_markdown)
         return ContentUpdateResponse(version=version, updated_at=updated_at)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
