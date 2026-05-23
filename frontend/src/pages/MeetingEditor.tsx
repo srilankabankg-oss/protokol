@@ -2,10 +2,9 @@ import { useEffect, useRef, useCallback, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import useMeetingStore from '../store/meetingStore';
 import AIPanel from '../components/ai/AIPanel';
-import DependencyChain from '../components/tasks/DependencyChain';
+import NavBar from '../components/ui/NavBar';
 import ApprovalStepper from '../components/ui/ApprovalStepper';
 import ExportButtons from '../components/ui/ExportButtons';
-import NavBar from '../components/ui/NavBar';
 import TabularProtocol, { type ProtocolTask } from '../components/protocol/TabularProtocol';
 
 function MeetingEditor() {
@@ -28,7 +27,6 @@ function MeetingEditor() {
     return () => { if (saveTimerRef.current) clearInterval(saveTimerRef.current); };
   }, [autosave]);
 
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [protocolTasks, setProtocolTasks] = useState<ProtocolTask[]>([]);
 
   if (store.isLoading) {
@@ -146,21 +144,8 @@ function MeetingEditor() {
                   <span className={a.is_completed ? 'line-through text-gray-400' : ''}>{a.title}</span>
                 </li>
               ))}
-            </ol>
-
-            <h3 className="font-semibold text-sm text-gray-700 mt-6 mb-3">Задачи и связи</h3>
-            {selectedTaskId && (
-              <div className="mb-3">
-                <DependencyChain taskId={selectedTaskId} />
-                <button onClick={() => setSelectedTaskId(null)} className="text-xs text-blue-500 hover:underline mt-1">
-                  Скрыть цепочку
-                </button>
-              </div>
-            )}
-            <div className="text-xs text-gray-400">
-              Нажмите на задачу для просмотра связей
-            </div>
-          </aside>
+</ol>
+        </aside>
 
           <main className="flex-1 flex flex-col min-w-0">
             <div className="flex-1 p-4 overflow-auto">

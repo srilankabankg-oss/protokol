@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { getAIInsights, createTask } from '../../api/client';
+import { getAIInsights } from '../../api/client';
 import type { AIInsights } from '../../types';
 
 interface Props {
@@ -10,7 +10,6 @@ function AIPanel({ meetingId }: Props) {
   const [insights, setInsights] = useState<AIInsights | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [addingTask, setAddingTask] = useState<string | null>(null);
 
   const fetchInsights = useCallback(async () => {
     try {
@@ -26,20 +25,7 @@ function AIPanel({ meetingId }: Props) {
 
   useEffect(() => {
     fetchInsights();
-    const timer = setInterval(fetchInsights, 10000);
-    return () => clearInterval(timer);
   }, [fetchInsights]);
-
-  async function handleAddTask(desc: string, tempId: string) {
-    setAddingTask(tempId);
-    try {
-      await createTask({ meeting_id: meetingId, description: desc });
-    } catch {
-      alert('Ошибка при добавлении задачи');
-    } finally {
-      setAddingTask(null);
-    }
-  }
 
   const severityBorder: Record<string, string> = {
     CRITICAL: 'border-l-red-600 bg-red-50',
@@ -79,13 +65,6 @@ function AIPanel({ meetingId }: Props) {
                     <span className="text-xs text-gray-400">
                       Уверенность: {(item.confidence_score * 100).toFixed(0)}%
                     </span>
-                    <button
-                      onClick={() => handleAddTask(item.extracted_description, item.temporary_id)}
-                      disabled={addingTask === item.temporary_id}
-                      className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-                    >
-                      {addingTask === item.temporary_id ? '...' : '+ Добавить'}
-                    </button>
                   </div>
                 </li>
               ))}

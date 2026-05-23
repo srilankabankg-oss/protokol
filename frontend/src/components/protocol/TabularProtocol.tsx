@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export interface ProtocolTask {
   id: string;
@@ -21,10 +21,11 @@ interface Props {
 }
 
 let counter = 0;
+function makeId() { return 'tsk-' + Math.random().toString(36).slice(2, 11); }
 function makeTask(): ProtocolTask {
   counter++;
   return {
-    id: crypto.randomUUID(),
+    id: makeId(),
     number: counter,
     code: `TSK-${String(counter).padStart(3, '0')}`,
     description: '',
@@ -37,16 +38,26 @@ function makeTask(): ProtocolTask {
 }
 
 function TabularProtocol({ meetingId, tasks, onTasksChange, readOnly, participants }: Props) {
+  const [localTasks, setLocalTasks] = useState<ProtocolTask[]>([]);
+
+  useEffect(() => { setLocalTasks(tasks); }, [tasks]);
+
   function addTask() {
-    onTasksChange([...tasks, makeTask()]);
+    const newTasks = [...localTasks, makeTask()];
+    setLocalTasks(newTasks);
+    onTasksChange(newTasks);
   }
 
   function setField(taskId: string, field: keyof ProtocolTask, value: string) {
-    onTasksChange(tasks.map(t => (t.id === taskId ? { ...t, [field]: value } : t)));
+    const updated = localTasks.map(t => (t.id === taskId ? { ...t, [field]: value } : t));
+    setLocalTasks(updated);
+    onTasksChange(updated);
   }
 
   function removeTask(taskId: string) {
-    onTasksChange(tasks.filter(t => t.id !== taskId));
+    const filtered = localTasks.filter(t => t.id !== taskId);
+    setLocalTasks(filtered);
+    onTasksChange(filtered);
   }
 
   return (
@@ -65,103 +76,54 @@ function TabularProtocol({ meetingId, tasks, onTasksChange, readOnly, participan
           </tr>
         </thead>
         <tbody>
-          {tasks.length === 0 && (
+          {localTasks.length === 0 && (
             <tr>
               <td colSpan={8} className="text-center text-xs text-gray-400 py-4">
                 Нет задач. Нажмите &quot;Добавить задачу&quot; или &quot;Обработать ИИ&quot;
               </td>
             </tr>
           )}
-          {tasks.map((t, i) => (
+          {localTasks.map((t, i) => (
             <tr key={t.id} className="border-b hover:bg-gray-50">
               <td className="border px-2 py-1 text-xs text-center">{i + 1}</td>
               <td className="border px-2 py-1 text-xs font-mono">{t.code}</td>
               <td className="border px-1 py-1">
-                {readOnly ? (
-                  <span className="text-xs">{t.description || '—'}</span>
-                ) : (
-                  <input
-                    value={t.description}
-                    onChange={e => setField(t.id, 'description', e.target.value)}
-                    className="w-full text-xs border-0 bg-transparent focus:outline-none"
-                    placeholder="Описание..."
-                  />
-                )}
+                {readOnly ? <span className="text-xs">{t.description || '—'}</span> :
+                  <input value={t.description} onChange={e => setField(t.id, 'description', e.target.value)}
+                    className="w-full text-xs border-0 bg-transparent focus:outline-none" placeholder="Описание..." />}
               </td>
               <td className="border px-1 py-1">
-                {readOnly ? (
-                  <span className="text-xs">{t.responsible || '—'}</span>
-                ) : participants.length > 0 ? (
-                  <select
-                    value={t.responsible}
-                    onChange={e => setField(t.id, 'responsible', e.target.value)}
-                    className="w-full text-xs border-0 bg-transparent"
-                  >
-                    <option value="">—</option>
-                    {participants.map(p => (
-                      <option key={p} value={p}>{p}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    value={t.responsible}
-                    onChange={e => setField(t.id, 'responsible', e.target.value)}
-                    className="w-full text-xs border-0 bg-transparent focus:outline-none"
-                    placeholder="Ответственный"
-                  />
-                )}
+                {readOnly ? <span className="text-xs">{t.responsible || '—'}</span> :
+                  participants.length > 0 ? (
+                    <select value={t.responsible} onChange={e => setField(t.id, 'responsible', e.target.value)}
+                      className="w-full text-xs border-0 bg-transparent"><option value="">—</option>
+                      {participants.map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                  ) : <input value={t.responsible} onChange={e => setField(t.id, 'responsible', e.target.value)}
+                      className="w-full text-xs border-0 bg-transparent focus:outline-none" placeholder="Ответственный" />}
               </td>
               <td className="border px-1 py-1">
-                {readOnly ? (
-                  <span className="text-xs">{t.controller || '—'}</span>
-                ) : participants.length > 0 ? (
-                  <select
-                    value={t.controller}
-                    onChange={e => setField(t.id, 'controller', e.target.value)}
-                    className="w-full text-xs border-0 bg-transparent"
-                  >
-                    <option value="">—</option>
-                    {participants.map(p => (
-                      <option key={p} value={p}>{p}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    value={t.controller}
-                    onChange={e => setField(t.id, 'controller', e.target.value)}
-                    className="w-full text-xs border-0 bg-transparent focus:outline-none"
-                    placeholder="Контролирующий"
-                  />
-                )}
+                {readOnly ? <span className="text-xs">{t.controller || '—'}</span> :
+                  participants.length > 0 ? (
+                    <select value={t.controller} onChange={e => setField(t.id, 'controller', e.target.value)}
+                      className="w-full text-xs border-0 bg-transparent"><option value="">—</option>
+                      {participants.map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                  ) : <input value={t.controller} onChange={e => setField(t.id, 'controller', e.target.value)}
+                      className="w-full text-xs border-0 bg-transparent focus:outline-none" placeholder="Контролирующий" />}
               </td>
               <td className="border px-1 py-1">
-                {readOnly ? (
-                  <span className="text-xs">{t.deadline || '—'}</span>
-                ) : (
-                  <input
-                    type="date"
-                    value={t.deadline}
-                    onChange={e => setField(t.id, 'deadline', e.target.value)}
-                    className="w-full text-xs border-0 bg-transparent"
-                  />
-                )}
+                {readOnly ? <span className="text-xs">{t.deadline || '—'}</span> :
+                  <input type="date" value={t.deadline} onChange={e => setField(t.id, 'deadline', e.target.value)}
+                    className="w-full text-xs border-0 bg-transparent" />}
               </td>
               <td className="border px-1 py-1">
-                {readOnly ? (
-                  <span className="text-xs">{t.notes || '—'}</span>
-                ) : (
-                  <input
-                    value={t.notes}
-                    onChange={e => setField(t.id, 'notes', e.target.value)}
-                    className="w-full text-xs border-0 bg-transparent focus:outline-none"
-                    placeholder="..."
-                  />
-                )}
+                {readOnly ? <span className="text-xs">{t.notes || '—'}</span> :
+                  <input value={t.notes} onChange={e => setField(t.id, 'notes', e.target.value)}
+                    className="w-full text-xs border-0 bg-transparent focus:outline-none" placeholder="..." />}
               </td>
               <td className="border px-1 py-1 text-center">
-                {!readOnly && (
-                  <button onClick={() => removeTask(t.id)} className="text-red-400 hover:text-red-600 text-xs">×</button>
-                )}
+                {!readOnly && <button onClick={() => removeTask(t.id)} className="text-red-400 hover:text-red-600 text-xs">×</button>}
               </td>
             </tr>
           ))}
