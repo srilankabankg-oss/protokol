@@ -28,6 +28,8 @@ function MeetingEditor() {
   }, [autosave]);
 
   const [protocolTasks, setProtocolTasks] = useState<ProtocolTask[]>([]);
+  const [showAddParticipant, setShowAddParticipant] = useState<boolean>(false);
+  const [newParticipantName, setNewParticipantName] = useState<string>();
 
   if (store.isLoading) {
     return (
@@ -118,9 +120,15 @@ function MeetingEditor() {
         <div className="flex flex-1 overflow-hidden">
           <aside className="w-64 bg-white border-r p-4 overflow-y-auto shrink-0 hidden md:block">
             <h3 className="font-semibold text-sm text-gray-700 mb-3">Участники</h3>
-            <button className="mb-3 px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">
+            <button onClick={() => setShowAddParticipant(!showAddParticipant)} className="mb-3 px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">
               + Добавить участника
             </button>
+          {showAddParticipant && (
+            <div className="mb-3 flex gap-2">
+              <input value={newParticipantName} onChange={e => setNewParticipantName(e.target.value)} placeholder="Имя участника" className="flex-1 border rounded px-2 py-1 text-xs" />
+              <button onClick={() => { setNewParticipantName(''); setShowAddParticipant(false); }} className="px-2 py-1 bg-blue-600 text-white rounded text-xs">OK</button>
+            </div>
+          )}
             <ul className="space-y-2 mb-6">
               {meeting.participants.map(p => (
                 <li key={p.user_id} className="flex items-center gap-2 text-sm">
