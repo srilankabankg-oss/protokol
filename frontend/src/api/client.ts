@@ -5,13 +5,13 @@ import type {
   MeetingCreateResponse,
   MeetingListItem,
   MeetingWorkspace,
+  Organization,
+  Person,
+  Contract,
   RaciResponse,
   TaskResponse,
   TokenResponse,
   User,
-  Organization,
-  Person,
-  Contract,
 } from '../types';
 
 const api = axios.create({ baseURL: '/api/v1' });
@@ -22,11 +22,30 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+let isRefreshing = false;
+let refreshPromise: Promise<string | null> | null = null;
+
 api.interceptors.response.use(
   (r) => r,
-  (error) => {
-    if (error.response?.status === 401) {
+  async (error) => {
+    if (error.response?.status === 401 && error.config && !error.config._retry) {
+      const refreshToken = localStorage.getItem('refresh_token');
+      if (refreshToken && !isRefreshing) {
+        error.config._retry = true;
+        isRefreshing = true;
+        try {
+          const { data } = await axios.post('/api/v1/auth/refresh', { refresh_token: refreshToken });
+          localStorage.setItem('access_token', data.access_token);
+          localStorage.setItem('refresh_token', data.refresh_token);
+          error.config.headers.Authorization = `Bearer ${data.access_token}`;
+          isRefreshing = false;
+          return api(error.config);
+        } catch {
+          isRefreshing = false;
+        }
+      }
       localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
       window.location.href = '/login';
     }
     return Promise.reject(error);
@@ -36,6 +55,7 @@ api.interceptors.response.use(
 export const login = async (email: string, password: string): Promise<TokenResponse> => {
   const { data } = await api.post('/auth/login', { email, password });
   localStorage.setItem('access_token', data.access_token);
+  localStorage.setItem('refresh_token', data.refresh_token);
   return data;
 };
 
