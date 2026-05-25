@@ -3,7 +3,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import FileResponse
-from sqlalchemy import select as sa_select
+from sqlalchemy import select as sa_select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -91,7 +91,7 @@ async def get_workspace(
         meeting_id=meeting.id, title=meeting.title, breadcrumbs=breadcrumbs,
         status=meeting.status.value,
         content_markdown=meeting.content_markdown,
-        participants=participants, agenda=agenda,
+        participants=participants, agenda=agenda, protocol_data=meeting.protocol_data,
     )
 
 
@@ -192,3 +192,16 @@ async def download_xlsx(
     filepath = generate_xlsx(meeting, list(meeting.tasks))
     return FileResponse(filepath, filename=f"protocol_{meeting_id}.xlsx",
                         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+@router.patch("/{meeting_id}/protocol-data")
+async def save_protocol_data(
+    meeting_id: UUID, body: dict,
+    session: AsyncSession = Depends(get_async_session),
+    _current_user=Depends(require_role("secretary", "admin")),
+):
+    meeting = await session.get(Meeting, meeting_id)
+    if not meeting:
+        raise HTTPException(404, "Meeting not found")
+    meeting.protocol_data = body
+    meeting.updated_at = func.now()
+    await session.flush()
+    return {"status": "saved"}

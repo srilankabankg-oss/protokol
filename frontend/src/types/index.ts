@@ -38,9 +38,11 @@ export interface Participant {
 
 export interface MeetingWorkspace {
   meeting_id: string;
+  title: string;
   breadcrumbs: string[];
   status: MeetingStatus;
   content_markdown?: string;
+  protocol_data?: any;
   participants: Participant[];
   agenda: AgendaItem[];
 }

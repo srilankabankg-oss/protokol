@@ -89,6 +89,7 @@ class MeetingWorkspaceResponse(BaseModel):
     status: MeetingStatus
     content_markdown: Optional[str] = None
     participants: list[ParticipantResponse]
+    protocol_data: Optional[dict] = None
     agenda: list[AgendaItemResponse]
 
 

@@ -1,16 +1,19 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import useMeetingStore from '../store/meetingStore';
+import useAuthStore from '../store/authStore';
 import AIPanel from '../components/ai/AIPanel';
 import ApprovalStepper from '../components/ui/ApprovalStepper';
 import ExportButtons from '../components/ui/ExportButtons';
 import NavBar from '../components/ui/NavBar';
 import TabularProtocol, { type ProtocolTask } from '../components/protocol/TabularProtocol';
+import { saveProtocolData } from '../api/client';
 
 function MeetingEditor() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const store = useMeetingStore();
+  const auth = useAuthStore();
   const saveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => { if (id) store.loadWorkspace(id); return () => { store.reset(); }; }, [id]);
@@ -21,6 +24,24 @@ function MeetingEditor() {
   const [showAddParticipant, setShowAddParticipant] = useState(false);
   const [dbPeople, setDbPeople] = useState<{id:string, name:string}[]>([]);
   const [selectedPerson, setSelectedPerson] = useState('');
+
+  // Load protocol tasks from saved data when meeting loads
+  useEffect(() => {
+    if (store.meeting?.protocol_data?.tasks) {
+      setProtocolTasks(store.meeting.protocol_data.tasks);
+    }
+  }, [store.meeting]);
+
+  // Auto-save protocol tasks on change (debounced 5s)
+  const protocolSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!store.meeting) return;
+    if (protocolSaveTimer.current) clearTimeout(protocolSaveTimer.current);
+    protocolSaveTimer.current = setTimeout(() => {
+      saveProtocolData(store.meeting!.meeting_id, { tasks: protocolTasks }).catch(() => {});
+    }, 5000);
+    return () => { if (protocolSaveTimer.current) clearTimeout(protocolSaveTimer.current); };
+  }, [protocolTasks]);
 
   if (store.isLoading) return <div className="flex items-center justify-center h-screen"><div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full" /></div>;
   if (store.error || !store.meeting) return <div className="flex items-center justify-center h-screen text-red-500">{store.error || 'Встреча не найдена'}</div>;

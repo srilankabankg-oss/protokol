@@ -131,6 +131,11 @@ export const getAIInsights = async (meetingId: string): Promise<AIInsights> => {
   return data;
 };
 
+export const saveProtocolData = async (meetingId: string, data: any) => {
+  const { data: result } = await api.patch(`/meetings/${meetingId}/protocol-data`, data);
+  return result;
+};
+
 // ── Admin API ──
 
 export const getOrganizations = async (): Promise<Organization[]> => {
