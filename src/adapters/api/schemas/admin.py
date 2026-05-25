@@ -31,7 +31,7 @@ class OrganizationResponse(BaseModel):
 
 
 class PersonCreate(BaseModel):
-    full_name: str = Field(max_length=255)
+    full_name: str = Field(min_length=1, max_length=255)
     job_title: Optional[str] = Field(default=None, max_length=255)
     org_id: Optional[UUID] = None
 
